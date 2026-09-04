@@ -7,7 +7,7 @@ extends RefCounted
 ## subject node for particles/fog/sky) so the shader drops in ready to use
 ## rather than as raw code the user has to wire up.
 
-static func export_asset(source_path: String, dest_path: String) -> Dictionary:
+static func export_asset(source_path: String, dest_path: String, _bucket: String = "") -> Dictionary:
 	var result := AssetExporter.new_result()
 
 	AssetExporter.copy_one_file(source_path, dest_path, result)

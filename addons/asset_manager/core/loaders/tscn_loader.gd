@@ -38,6 +38,11 @@ static func load_external(path: String, bucket: String = DEFAULT_BUCKET) -> Node
 	apply_deferred_writes(batch)
 	return node
 
+## load_external's counterpart for a standalone resource file rather than a
+## scene: same pack-relative path resolution, no node tree.
+static func load_resource_external(path: String, bucket: String = DEFAULT_BUCKET) -> Resource:
+	return _load_resource_file(path, find_pack_root(path.get_base_dir(), bucket))
+
 static func _load_external_inner(path: String, bucket: String = DEFAULT_BUCKET) -> Node:
 
 	var text := FileAccess.get_file_as_string(path)
@@ -436,7 +441,15 @@ static func _load_ext_resource_inner(fields: Dictionary, base_dir: String, pack_
 			packed.pack(nested)
 			nested.queue_free()
 			return packed
-		"Environment", "Resource", "ArrayMesh", "Material":
+		"FontFile":
+			# A font ext_resource is usually the raw .ttf/.otf rather than a
+			# Godot resource, which has no [gd_resource] header to parse.
+			if real_path.get_extension().to_lower() in TEXT_RESOURCE_EXTENSIONS:
+				return _load_resource_file(real_path, pack_root)
+			var font := FontFile.new()
+			font.load_dynamic_font(real_path)
+			return font
+		"Environment", "Resource", "ArrayMesh", "Material", "StyleBox":
 			# .obj is a Wavefront file, not a Godot resource, the engine only
 			# reads it through an editor-side importer, so parse it ourselves.
 			if real_path.get_extension().to_lower() == "obj":

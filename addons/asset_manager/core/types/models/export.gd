@@ -13,7 +13,7 @@ const DEPENDENCY_URI_KEYS: PackedStringArray = ["images", "buffers"]
 ## (already computed by export.gd's export_asset(), subfolder and all),
 ## not a directory to join a filename onto. Handlers only re-derive a path
 ## for their own DEPENDENCIES, off of dest_path's base dir.
-static func export_asset(source_path: String, dest_path: String) -> Dictionary:
+static func export_asset(source_path: String, dest_path: String, _bucket: String = "") -> Dictionary:
 	var result := AssetExporter.new_result()
 
 	AssetExporter.copy_one_file(source_path, dest_path, result)

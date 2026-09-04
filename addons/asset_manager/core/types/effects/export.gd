@@ -22,11 +22,11 @@ extends RefCounted
 const REFERENCING_EXTENSIONS: PackedStringArray = ["tscn", "tres", "material", "mesh", "res"]
 const REWRITABLE_EXTENSIONS: PackedStringArray = ["tscn", "tres"]
 
-static func export_asset(source_path: String, dest_path: String) -> Dictionary:
+static func export_asset(source_path: String, dest_path: String, bucket: String = "effects") -> Dictionary:
 	var result := AssetExporter.new_result()
 
-	var pack_root := _pack_root_for(source_path, dest_path)
-	var pack_dest_root := dest_path.get_base_dir()
+	var pack_root := _pack_root_for(source_path, bucket)
+	var pack_dest_root := _pack_dest_root_for(source_path, pack_root, dest_path)
 
 	# Source file -> destination file, for every file this effect needs.
 	var copy_map: Dictionary = {source_path: dest_path}
@@ -91,22 +91,31 @@ static func _baked_paths_in(file_path: String) -> PackedStringArray:
 			paths.append(found)
 	return paths
 
-## Walks up from source_path looking for the pack folder name, which is
-## already known from dest_path (AssetExporter set it as
-## <dest>/<pack folder>/<file>). TscnSceneLoader.find_pack_root() reaches the
-## same answer a different way, walking up for the bucket folder's child,
-## but we already have the name, no need to re-derive it.
-static func _pack_root_for(source_path: String, dest_path: String) -> String:
-	var pack_folder := dest_path.get_base_dir().get_file()
+## The pack is the folder holding everything this asset can reference, so
+## baked res://<Root>/... paths resolve against it. dest_path mirrors the
+## asset's path below the bucket, so both roots are the same walk: climb the
+## source until the parent is the bucket, and drop as many segments from the
+## destination.
+static func _pack_root_for(source_path: String, bucket: String) -> String:
 	var dir := source_path.get_base_dir()
+	var found := ""
 	while dir != "" and dir != "/":
-		if dir.get_file() == pack_folder:
-			return dir
 		var parent := dir.get_base_dir()
+		if parent.get_file() == bucket:
+			found = dir
 		if parent == dir:
 			break
 		dir = parent
-	return source_path.get_base_dir()
+	return found if not found.is_empty() else source_path.get_base_dir()
+
+static func _pack_dest_root_for(source_path: String, pack_root: String, dest_path: String) -> String:
+	var below := source_path.trim_prefix(pack_root).trim_prefix("/")
+	var depth := below.split("/").size() - 1
+
+	var dest := dest_path.get_base_dir()
+	for i in range(depth):
+		dest = dest.get_base_dir()
+	return dest
 
 ## Depth-first walk of the dependency tree, each resolved file lands in
 ## copy_map. copy_map is the visited set too, a pack where two scenes share

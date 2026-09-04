@@ -86,6 +86,14 @@ const ALL: Array[Dictionary] = [
 		}
 	},
 	{
+		"id": "themes",
+		"label": "Themes",
+		"extensions": ["tres"],
+		"default_icon": "Theme",
+		"default_export_path": "res://assets/themes",
+		"resource_type": "Theme"
+	},
+	{
 		"id": "scenes",
 		"label": "Scenes",
 		"extensions": ["tscn"],

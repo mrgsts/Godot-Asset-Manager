@@ -6,5 +6,5 @@ extends RefCounted
 ## and the export walk is byte-identical between them. One implementation
 ## lives in effects/export.gd; this stays so the HANDLERS dict keeps one
 ## entry per type.
-static func export_asset(source_path: String, dest_path: String) -> Dictionary:
-	return EffectsExportHandler.export_asset(source_path, dest_path)
+static func export_asset(source_path: String, dest_path: String, bucket: String = "scenes") -> Dictionary:
+	return EffectsExportHandler.export_asset(source_path, dest_path, bucket)

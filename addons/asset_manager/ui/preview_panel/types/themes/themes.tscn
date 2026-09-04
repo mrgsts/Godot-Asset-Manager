@@ -1,0 +1,345 @@
+[gd_scene format=3 uid="uid://byem07r41f1gv"]
+
+[ext_resource type="Script" uid="uid://cbwx66cywv5qg" path="res://addons/asset_manager/ui/preview_panel/types/themes/themes.gd" id="1_0hcyb"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_doe5k"]
+
+[node name="Themes" type="Control" unique_id=571276395]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_0hcyb")
+
+[node name="Backdrop" type="ColorRect" parent="." unique_id=748984791]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.13, 0.14, 0.16, 1)
+
+[node name="ViewportToolbar" type="MarginContainer" parent="." unique_id=1663957043]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+
+[node name="HBox" type="HBoxContainer" parent="ViewportToolbar" unique_id=931256456]
+layout_mode = 2
+alignment = 2
+
+[node name="BackdropBtn" type="MenuButton" parent="ViewportToolbar/HBox" unique_id=1024631944]
+layout_mode = 2
+tooltip_text = "Preview background"
+flat = false
+
+[node name="ResetBtn" type="Button" parent="ViewportToolbar/HBox" unique_id=680127179]
+layout_mode = 2
+tooltip_text = "Reset zoom and position"
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=1149892836]
+layout_mode = 0
+mouse_filter = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Sheet" type="VBoxContainer" parent="Margin" unique_id=253154837]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Row1" type="HBoxContainer" parent="Margin/Sheet" unique_id=1816810520]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Button" type="Button" parent="Margin/Sheet/Row1" unique_id=917232414]
+layout_mode = 2
+text = "Button"
+
+[node name="Toggled" type="Button" parent="Margin/Sheet/Row1" unique_id=449054221]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "Toggled"
+
+[node name="Disabled" type="Button" parent="Margin/Sheet/Row1" unique_id=1015360606]
+layout_mode = 2
+disabled = true
+text = "Disabled"
+
+[node name="Flat" type="Button" parent="Margin/Sheet/Row1" unique_id=672657806]
+layout_mode = 2
+text = "Flat"
+flat = true
+
+[node name="LinkButton" type="LinkButton" parent="Margin/Sheet/Row1" unique_id=893771147]
+layout_mode = 2
+size_flags_vertical = 4
+text = "LinkButton"
+
+[node name="Row2" type="HBoxContainer" parent="Margin/Sheet" unique_id=882564622]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CheckBox" type="CheckBox" parent="Margin/Sheet/Row2" unique_id=2071658025]
+layout_mode = 2
+button_pressed = true
+text = "Checked"
+
+[node name="CheckBoxOff" type="CheckBox" parent="Margin/Sheet/Row2" unique_id=1793729451]
+layout_mode = 2
+text = "Unchecked"
+
+[node name="CheckBoxDisabled" type="CheckBox" parent="Margin/Sheet/Row2" unique_id=1545342565]
+layout_mode = 2
+disabled = true
+button_pressed = true
+text = "Disabled"
+
+[node name="Row2b" type="HBoxContainer" parent="Margin/Sheet" unique_id=442595004]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CheckButton" type="CheckButton" parent="Margin/Sheet/Row2b" unique_id=1911769208]
+layout_mode = 2
+button_pressed = true
+text = "On"
+
+[node name="CheckButtonOff" type="CheckButton" parent="Margin/Sheet/Row2b" unique_id=870837152]
+layout_mode = 2
+text = "Off"
+
+[node name="CheckButtonDisabled" type="CheckButton" parent="Margin/Sheet/Row2b" unique_id=432899464]
+layout_mode = 2
+disabled = true
+button_pressed = true
+text = "Disabled"
+
+[node name="RadioOn" type="CheckBox" parent="Margin/Sheet/Row2b" unique_id=1462738905]
+layout_mode = 2
+button_pressed = true
+button_group = SubResource("ButtonGroup_doe5k")
+text = "A"
+
+[node name="RadioOff" type="CheckBox" parent="Margin/Sheet/Row2b" unique_id=1044926183]
+layout_mode = 2
+button_group = SubResource("ButtonGroup_doe5k")
+text = "B"
+
+[node name="Row3" type="HBoxContainer" parent="Margin/Sheet" unique_id=931549129]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="OptionButton" type="OptionButton" parent="Margin/Sheet/Row3" unique_id=1783201289]
+layout_mode = 2
+selected = 0
+item_count = 3
+popup/item_0/text = "OptionButton"
+popup/item_0/id = 0
+popup/item_1/text = "Second"
+popup/item_1/id = 1
+popup/item_2/text = "Third"
+popup/item_2/id = 2
+
+[node name="MenuButton" type="MenuButton" parent="Margin/Sheet/Row3" unique_id=1230105216]
+layout_mode = 2
+text = "MenuButton"
+flat = false
+item_count = 8
+popup/item_0/text = "Item"
+popup/item_0/id = 0
+popup/item_1/text = "Disabled Item"
+popup/item_1/id = 1
+popup/item_1/disabled = true
+popup/item_2/id = 2
+popup/item_2/separator = true
+popup/item_3/text = "Check Item"
+popup/item_3/checkable = 1
+popup/item_3/id = 3
+popup/item_4/text = "Checked Item"
+popup/item_4/checkable = 1
+popup/item_4/checked = true
+popup/item_4/id = 4
+popup/item_5/id = 5
+popup/item_5/separator = true
+popup/item_6/text = "Radio Item"
+popup/item_6/checkable = 2
+popup/item_6/id = 6
+popup/item_7/text = "Checked Radio"
+popup/item_7/checkable = 2
+popup/item_7/checked = true
+popup/item_7/id = 7
+
+[node name="SpinBox" type="SpinBox" parent="Margin/Sheet/Row3" unique_id=1901832080]
+layout_mode = 2
+value = 7.0
+
+[node name="ColorPickerButton" type="ColorPickerButton" parent="Margin/Sheet/Row3" unique_id=1314255413]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+color = Color(0.3, 0.6, 0.9, 1)
+
+[node name="TextPanel" type="PanelContainer" parent="Margin/Sheet" unique_id=1155342559]
+layout_mode = 2
+
+[node name="TextMargin" type="MarginContainer" parent="Margin/Sheet/TextPanel" unique_id=2117652952]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="TextBox" type="VBoxContainer" parent="Margin/Sheet/TextPanel/TextMargin" unique_id=588955034]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Label" type="Label" parent="Margin/Sheet/TextPanel/TextMargin/TextBox" unique_id=1194382048]
+layout_mode = 2
+text = "Label — the quick brown fox"
+
+[node name="RichTextLabel" type="RichTextLabel" parent="Margin/Sheet/TextPanel/TextMargin/TextBox" unique_id=1735046076]
+layout_mode = 2
+bbcode_enabled = true
+text = "RichTextLabel with [b]bold[/b] and [i]italic[/i]"
+fit_content = true
+
+[node name="Row4" type="HBoxContainer" parent="Margin/Sheet" unique_id=1993983473]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LineEdit" type="LineEdit" parent="Margin/Sheet/Row4" unique_id=300509946]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "LineEdit"
+
+[node name="LineEditDisabled" type="LineEdit" parent="Margin/Sheet/Row4" unique_id=1727902601]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Disabled"
+editable = false
+
+[node name="TextEdit" type="TextEdit" parent="Margin/Sheet" unique_id=978663327]
+layout_mode = 2
+text = "TextEdit
+second line"
+scroll_fit_content_height = true
+
+[node name="ProgressBar" type="ProgressBar" parent="Margin/Sheet" unique_id=689271714]
+layout_mode = 2
+value = 42.0
+
+[node name="Row5" type="HBoxContainer" parent="Margin/Sheet" unique_id=1152657698]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HSlider" type="HSlider" parent="Margin/Sheet/Row5" unique_id=985079264]
+layout_mode = 2
+size_flags_horizontal = 3
+value = 60.0
+
+[node name="HSliderDisabled" type="HSlider" parent="Margin/Sheet/Row5" unique_id=24054222]
+layout_mode = 2
+size_flags_horizontal = 3
+value = 25.0
+editable = false
+
+[node name="HSeparator" type="HSeparator" parent="Margin/Sheet" unique_id=2112183326]
+layout_mode = 2
+
+[node name="Row6" type="HBoxContainer" parent="Margin/Sheet" unique_id=1279951789]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Tree" type="Tree" parent="Margin/Sheet/Row6" unique_id=1758556806]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+allow_reselect = true
+allow_rmb_select = true
+select_mode = 1
+
+[node name="VBars" type="HBoxContainer" parent="Margin/Sheet/Row6" unique_id=1661019596]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="VSlider" type="VSlider" parent="Margin/Sheet/Row6/VBars" unique_id=292397337]
+layout_mode = 2
+size_flags_vertical = 3
+value = 70.0
+
+[node name="VSeparator" type="VSeparator" parent="Margin/Sheet/Row6/VBars" unique_id=732296362]
+layout_mode = 2
+
+[node name="RightColumn" type="VBoxContainer" parent="Margin/Sheet/Row6" unique_id=392778843]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="ItemList" type="ItemList" parent="Margin/Sheet/Row6/RightColumn" unique_id=1098308765]
+custom_minimum_size = Vector2(0, 125)
+layout_mode = 2
+item_count = 3
+item_0/text = "ItemList entry"
+item_1/text = "Selected entry"
+item_2/text = "Third entry"
+
+[node name="PanelContainer" type="PanelContainer" parent="Margin/Sheet/Row6/RightColumn" unique_id=1939210349]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PanelLabel" type="Label" parent="Margin/Sheet/Row6/RightColumn/PanelContainer" unique_id=295439722]
+layout_mode = 2
+text = "Panel"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TabContainer" type="TabContainer" parent="Margin/Sheet" unique_id=1034591146]
+layout_mode = 2
+current_tab = 0
+
+[node name="Tab" type="PanelContainer" parent="Margin/Sheet/TabContainer" unique_id=1004277242]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="TabLabel" type="Label" parent="Margin/Sheet/TabContainer/Tab" unique_id=139241747]
+layout_mode = 2
+text = "TabContainer page"
+horizontal_alignment = 1
+
+[node name="Second" type="PanelContainer" parent="Margin/Sheet/TabContainer" unique_id=1650370381]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="TabLabel" type="Label" parent="Margin/Sheet/TabContainer/Second" unique_id=1549921885]
+layout_mode = 2
+text = "Second Tab"
+horizontal_alignment = 1
+
+[node name="Third" type="PanelContainer" parent="Margin/Sheet/TabContainer" unique_id=1369299963]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="TabLabel" type="Label" parent="Margin/Sheet/TabContainer/Third" unique_id=617486277]
+layout_mode = 2
+text = "Third Tab contents
+Second Line"
+horizontal_alignment = 1
