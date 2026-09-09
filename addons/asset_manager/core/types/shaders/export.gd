@@ -14,6 +14,8 @@ static func export_asset(source_path: String, dest_path: String, _bucket: String
 	if not FileAccess.file_exists(dest_path):
 		return result
 
+	_copy_includes(source_path, dest_path, result, {})
+
 	var shader := Shader.new()
 	shader.code = FileAccess.get_file_as_string(source_path)
 	var mode := shader.get_mode()
@@ -31,6 +33,30 @@ static func export_asset(source_path: String, dest_path: String, _bucket: String
 			pass
 
 	return result
+
+## An #include is left in the copied shader untouched: the paths these packs
+## use are relative to the shader itself, so mirroring the include's position
+## below the destination is enough for it to resolve. Recursive, since an
+## include can include. Missing files are the pack's own problem and warned
+## about rather than failing the export.
+static func _copy_includes(source_path: String, dest_path: String, result: Dictionary, seen: Dictionary) -> void:
+	var regex := RegEx.new()
+	regex.compile('#include\\s+"([^"]+)"')
+
+	var source_dir := source_path.get_base_dir()
+	for m in regex.search_all(FileAccess.get_file_as_string(source_path)):
+		var raw_path: String = m.get_string(1)
+		var include_source := TscnSceneLoader.resolve_pack_path(raw_path, source_dir, source_dir)
+		if include_source.is_empty() or not FileAccess.file_exists(include_source):
+			push_warning("AssetManager: missing shader include, not exported: " + raw_path)
+			continue
+		if seen.has(include_source):
+			continue
+		seen[include_source] = true
+
+		var include_dest := dest_path.get_base_dir().path_join(raw_path)
+		AssetExporter.copy_one_file(include_source, include_dest, result)
+		_copy_includes(include_source, include_dest, result, seen)
 
 static func _companion_path(dest_path: String, new_extension: String) -> String:
 	return dest_path.get_basename() + "." + new_extension

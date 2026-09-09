@@ -31,7 +31,11 @@ const MAX_INCLUDE_DEPTH: int = 8
 ## Node.is_accessible_from_caller_thread() permits the write (the node isn't in a
 ## tree yet), so nothing warns, the shader compiler underneath simply isn't
 ## guarded. Confirmed from a dev build's symbolicated stack.
+## A flag that determines if this asset has a script.
+static var scripts_skipped: bool = false
+
 static func load_external(path: String, bucket: String = DEFAULT_BUCKET) -> Node:
+	scripts_skipped = false
 	var batch := _begin_batch()
 	var node := _load_external_inner(path, bucket)
 	_end_batch(batch)
@@ -422,6 +426,7 @@ static func _load_ext_resource_inner(fields: Dictionary, base_dir: String, pack_
 			shader.code = resolve_shader_includes(FileAccess.get_file_as_string(real_path), real_path, pack_root)
 			return shader
 		"Script":
+			scripts_skipped = true
 			push_warning("AssetManager: skipping script (not executed in preview): " + real_path)
 			return null
 		"PackedScene":

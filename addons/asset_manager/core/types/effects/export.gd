@@ -2,7 +2,7 @@
 class_name EffectsExportHandler
 extends RefCounted
 ## Exports a .tscn outside res:// plus everything it depends on.
-## Used by effects and scenes (scenes/export.gd).
+## Used by effects, scenes (scenes/export.gd) and themes (themes/export.gd).
 ##
 ## Can't use get_dependencies(), it wants a real res:// path. Packs bake
 ## res://<PackRoot>/... paths that only resolved on the author's machine, so
@@ -19,8 +19,18 @@ extends RefCounted
 ## pass through as opaque bytes, the packs' ones embed no paths of their own
 ## (verified), nothing to rewrite.
 
-const REFERENCING_EXTENSIONS: PackedStringArray = ["tscn", "tres", "material", "mesh", "res"]
-const REWRITABLE_EXTENSIONS: PackedStringArray = ["tscn", "tres"]
+const REFERENCING_EXTENSIONS: PackedStringArray = ["tscn", "tres", "material", "mesh", "res", "gd"]
+const REWRITABLE_EXTENSIONS: PackedStringArray = ["tscn", "tres", "gd"]
+
+## A res:// literal in a script is only followed when it names something we'd
+## treat as an asset. A .cfg or .json is as likely to be written at runtime as
+## read, and repointing one into the pack would send the user's saved settings
+## somewhere they'd never look.
+const SCRIPT_PATH_EXTENSIONS: PackedStringArray = [
+	"tscn", "tres", "res", "png", "jpg", "jpeg", "webp", "svg", "exr", "hdr",
+	"mp3", "ogg", "wav", "ttf", "otf", "gdshader", "glb", "gltf", "obj",
+	"material", "mesh", "theme",
+]
 
 static func export_asset(source_path: String, dest_path: String, bucket: String = "effects") -> Dictionary:
 	var result := AssetExporter.new_result()
@@ -120,12 +130,16 @@ static func _pack_dest_root_for(source_path: String, pack_root: String, dest_pat
 ## Depth-first walk of the dependency tree, each resolved file lands in
 ## copy_map. copy_map is the visited set too, a pack where two scenes share
 ## a texture (or reference each other) would loop forever without it.
-static func _collect_dependencies(file_path: String, pack_root: String, pack_dest_root: String, copy_map: Dictionary) -> void:
+static func _collect_dependencies(file_path: String, pack_root: String, pack_dest_root: String, copy_map: Dictionary, class_map: Dictionary = {}) -> void:
 	if not _can_contain_references(file_path):
 		return
 
 	if BinaryResource.is_binary(file_path):
 		_collect_binary_dependencies(file_path, pack_root, pack_dest_root, copy_map)
+		return
+
+	if file_path.get_extension().to_lower() == "gd":
+		_collect_script_dependencies(file_path, pack_root, pack_dest_root, copy_map, class_map)
 		return
 
 	for raw_path in _read_ext_resource_paths(file_path):
@@ -137,7 +151,7 @@ static func _collect_dependencies(file_path: String, pack_root: String, pack_des
 			continue
 
 		copy_map[dep_source] = _mirrored_dest(dep_source, pack_root, pack_dest_root)
-		_collect_dependencies(dep_source, pack_root, pack_dest_root, copy_map)
+		_collect_dependencies(dep_source, pack_root, pack_dest_root, copy_map, class_map)
 
 ## Binary resources can reference other files too, but their paths are in
 ## compressed bytes, so nothing nested under one is discoverable here. They're
@@ -155,6 +169,141 @@ static func _read_ext_resource_paths(file_path: String) -> PackedStringArray:
 	regex.compile('\\[ext_resource[^\\]]*path="([^"]+)"')
 	for m in regex.search_all(text):
 		paths.append(m.get_string(1))
+	return paths
+
+## A script names what it needs three ways, none of them a path Godot would
+## report: a class name (resolved through the global registry, which only
+## exists inside a project), a res:// literal, or a res:// folder whose files
+## are picked at runtime. All three are read out of the source text here.
+static func _collect_script_dependencies(file_path: String, pack_root: String, pack_dest_root: String, copy_map: Dictionary, class_map: Dictionary) -> void:
+	if class_map.is_empty():
+		_build_class_map(pack_root, class_map)
+
+	var text := FileAccess.get_file_as_string(file_path)
+
+	for dep_source in _script_dependencies(text, file_path, pack_root, class_map):
+		if copy_map.has(dep_source):
+			continue
+
+		copy_map[dep_source] = _mirrored_dest(dep_source, pack_root, pack_dest_root)
+		_collect_dependencies(dep_source, pack_root, pack_dest_root, copy_map, class_map)
+
+## Resolves all three forms to real files in the pack. A folder literal yields
+## everything directly inside it: the filename is built at runtime ("icons/" +
+## name + ".svg"), so nothing names those files individually.
+static func _script_dependencies(text: String, file_path: String, pack_root: String, class_map: Dictionary) -> PackedStringArray:
+	var found := PackedStringArray()
+	var base_dir := file_path.get_base_dir()
+
+	for class_ref in _read_script_class_refs(text):
+		if class_map.has(class_ref):
+			found.append(class_map[class_ref])
+
+	for raw_path in _read_script_res_paths_in(text):
+		var resolved := TscnSceneLoader.resolve_pack_path(raw_path, base_dir, pack_root)
+		if not resolved.is_empty() and FileAccess.file_exists(resolved):
+			found.append(resolved)
+
+	for raw_dir in _read_script_res_dirs_in(text):
+		var dir_source := _resolve_pack_dir(raw_dir, pack_root)
+		if not dir_source.is_empty():
+			found.append_array(_files_directly_under(dir_source))
+
+	var out := PackedStringArray()
+	for path in found:
+		if path != file_path and not out.has(path):
+			out.append(path)
+	return out
+
+## Only a literal ending in "/" is treated as a folder: it can't be a file, and
+## the trailing slash is what a concatenated path looks like.
+static func _read_script_res_dirs_in(text: String) -> PackedStringArray:
+	var dirs := PackedStringArray()
+
+	var regex := RegEx.new()
+	regex.compile('"(res://[^"]*/)"')
+	for m in regex.search_all(text):
+		var raw: String = m.get_string(1)
+		if not dirs.has(raw):
+			dirs.append(raw)
+	return dirs
+
+## resolve_pack_path only answers for files, so the same backwards walk is done
+## here against directories.
+static func _resolve_pack_dir(raw_dir: String, pack_root: String) -> String:
+	var stripped := raw_dir.trim_prefix("res://").trim_suffix("/")
+	if stripped.is_empty():
+		return ""
+
+	var segments := stripped.split("/")
+	for cut in range(0, segments.size()):
+		var candidate := pack_root.path_join("/".join(segments.slice(cut)))
+		if DirAccess.dir_exists_absolute(candidate):
+			return candidate
+	return ""
+
+static func _files_directly_under(dir_path: String) -> PackedStringArray:
+	var paths := PackedStringArray()
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return paths
+
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		if not dir.current_is_dir() and not entry.ends_with(".import"):
+			paths.append(dir_path.path_join(entry))
+		entry = dir.get_next()
+	dir.list_dir_end()
+	return paths
+
+## A class_name is global, so it can be used without extending it and without
+## naming a file. Any identifier before a dot is a candidate; the caller keeps
+## only those the pack actually declares, which drops Node3D and the like.
+static func _read_script_class_refs(text: String) -> PackedStringArray:
+	var names := PackedStringArray()
+
+	var extends_re := RegEx.new()
+	extends_re.compile('(?m)^\\s*extends\\s+([A-Za-z_]\\w*)\\s*$')
+	var found := extends_re.search(text)
+	if found:
+		names.append(found.get_string(1))
+
+	var used_re := RegEx.new()
+	used_re.compile('\\b([A-Za-z_]\\w*)\\s*\\.')
+	for m in used_re.search_all(text):
+		var used: String = m.get_string(1)
+		if not names.has(used):
+			names.append(used)
+	return names
+
+## Walks the pack once, mapping every class_name declaration to its file. Filled
+## in place so one export builds it once and shares it down the recursion.
+static func _build_class_map(pack_root: String, class_map: Dictionary) -> void:
+	var regex := RegEx.new()
+	regex.compile('(?m)^\\s*class_name\\s+([A-Za-z_]\\w*)')
+
+	for path in _script_paths_under(pack_root):
+		var found := regex.search(FileAccess.get_file_as_string(path))
+		if found and not class_map.has(found.get_string(1)):
+			class_map[found.get_string(1)] = path
+
+static func _script_paths_under(dir_path: String) -> PackedStringArray:
+	var paths := PackedStringArray()
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return paths
+
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		var full := dir_path.path_join(entry)
+		if dir.current_is_dir():
+			paths.append_array(_script_paths_under(full))
+		elif entry.get_extension().to_lower() == "gd":
+			paths.append(full)
+		entry = dir.get_next()
+	dir.list_dir_end()
 	return paths
 
 static func _can_contain_references(file_path: String) -> bool:
@@ -200,6 +349,9 @@ static func _rewrite_dependencies(copy_map: Dictionary, pack_root: String, resul
 static func _rewrite_text(text: String, dep_source: String, pack_root: String, copy_map: Dictionary) -> String:
 	var base_dir := dep_source.get_base_dir()
 
+	if dep_source.get_extension().to_lower() == "gd":
+		return _rewrite_script_text(text, base_dir, pack_root, copy_map)
+
 	var regex := RegEx.new()
 	regex.compile('\\[ext_resource[^\\]]*\\]')
 	var out := text
@@ -223,6 +375,49 @@ static func _rewrite_text(text: String, dep_source: String, pack_root: String, c
 		out = out.replace(tag, new_tag)
 
 	return out
+
+## Only literals naming a file the export actually copied are repointed, so a
+## path built at runtime or one the pack doesn't ship is left as the author
+## wrote it.
+static func _rewrite_script_text(text: String, base_dir: String, pack_root: String, copy_map: Dictionary) -> String:
+	var out := text
+	for raw_path in _read_script_res_paths_in(text):
+		var resolved := TscnSceneLoader.resolve_pack_path(raw_path, base_dir, pack_root)
+		if resolved.is_empty() or not copy_map.has(resolved):
+			continue
+
+		var new_path := ProjectSettings.localize_path(str(copy_map[resolved]))
+		out = out.replace('"' + raw_path + '"', '"' + new_path + '"')
+
+	for raw_dir in _read_script_res_dirs_in(text):
+		var dir_source := _resolve_pack_dir(raw_dir, pack_root)
+		if dir_source.is_empty():
+			continue
+
+		var copied := ""
+		for entry in _files_directly_under(dir_source):
+			if copy_map.has(entry):
+				copied = str(copy_map[entry])
+				break
+		if copied.is_empty():
+			continue
+
+		var new_dir := ProjectSettings.localize_path(copied.get_base_dir()) + "/"
+		out = out.replace('"' + raw_dir + '"', '"' + new_dir + '"')
+	return out
+
+static func _read_script_res_paths_in(text: String) -> PackedStringArray:
+	var paths := PackedStringArray()
+
+	var regex := RegEx.new()
+	regex.compile('"(res://[^"]+)"')
+	for m in regex.search_all(text):
+		var raw: String = m.get_string(1)
+		if not SCRIPT_PATH_EXTENSIONS.has(raw.get_extension().to_lower()):
+			continue
+		if not paths.has(raw):
+			paths.append(raw)
+	return paths
 
 static func _strip_uid_attribute(tag: String) -> String:
 	var uid_re := RegEx.new()
