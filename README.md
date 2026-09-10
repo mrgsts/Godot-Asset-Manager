@@ -32,6 +32,7 @@ Manage all your Godot assets in a single place, get previews and send files dire
 - Thumbnail generation for all asset types
 - Export destination per project/game
 - Grid & list toggable views
+- Right-click to send project assets to the library
 
 ## Requirements:
 
