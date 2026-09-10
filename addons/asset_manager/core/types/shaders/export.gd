@@ -46,7 +46,7 @@ static func _copy_includes(source_path: String, dest_path: String, result: Dicti
 	var source_dir := source_path.get_base_dir()
 	for m in regex.search_all(FileAccess.get_file_as_string(source_path)):
 		var raw_path: String = m.get_string(1)
-		var include_source := TscnSceneLoader.resolve_pack_path(raw_path, source_dir, source_dir)
+		var include_source := PackPaths.resolve_pack_path(raw_path, source_dir, source_dir)
 		if include_source.is_empty() or not FileAccess.file_exists(include_source):
 			push_warning("AssetManager: missing shader include, not exported: " + raw_path)
 			continue

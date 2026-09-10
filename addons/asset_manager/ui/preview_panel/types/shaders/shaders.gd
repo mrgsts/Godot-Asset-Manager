@@ -192,7 +192,7 @@ func show_asset(path: String, _type_entry: Dictionary = {}) -> void:
 	visible = true
 	_orbit.snap_to_look_at()
 
-	var text := TscnSceneLoader.resolve_shader_includes(FileAccess.get_file_as_string(path), path)
+	var text := PackPaths.resolve_shader_includes(FileAccess.get_file_as_string(path), path)
 	var shader := Shader.new()
 	shader.code = text
 	var mode := shader.get_mode()

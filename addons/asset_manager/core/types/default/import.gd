@@ -44,21 +44,8 @@ static func _matches_type(file_path: String, type_entry: Dictionary) -> bool:
 	if not extensions.is_empty() and not extensions.has(file_path.get_extension().to_lower()):
 		return false
 
-	var wanted: String = type_entry.get("resource_type", "")
-	return wanted.is_empty() or _header_type(file_path) == wanted
-
-static func _header_type(file_path: String) -> String:
-	var file := FileAccess.open(file_path, FileAccess.READ)
-	if file == null:
-		return ""
-
-	var first_line := file.get_line()
-	file.close()
-
-	var regex := RegEx.new()
-	regex.compile('^\\[gd_resource .*type="([^"]+)"')
-	var found := regex.search(first_line)
-	return found.get_string(1) if found else ""
+	var wanted: Array = type_entry.get("resource_type", [])
+	return wanted.is_empty() or wanted.has(ResourceHeader.type_of(file_path))
 
 const TAG_BLOCKLIST: PackedStringArray = [
 	"obj", "gltf", "glb", "fbx", "blend", "dae", "usd", "usda", "usdc",

@@ -32,8 +32,15 @@ static func build_subject(_prepared: Variant, path: String) -> Node3D:
 
 static func render_prepared(_prepared: Variant, viewport: ThumbnailViewport, path: String) -> Image:
 	var node := TscnSceneLoader.load_external(path, "scenes")
-	if node == null or not (node is Node3D):
-		if node != null:
-			node.free()
+	if node == null:
 		return null
-	return await viewport.capture(node as Node3D)
+
+	if node is Node3D:
+		return await viewport.capture(node as Node3D)
+
+	# A UI scene draws to a canvas rather than into the 3D world. capture_2d
+	# wants a Node2D, and a Control or CanvasLayer is not one, so it goes in a
+	# holder the way the shader and theme tiles do.
+	var holder := Node2D.new()
+	holder.add_child(node)
+	return await viewport.capture_2d(holder, ThumbnailCache.THUMB_SIZE)

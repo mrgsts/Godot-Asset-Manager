@@ -20,7 +20,7 @@ static func export_asset(source_path: String, dest_path: String, _bucket: String
 
 	var ext := source_path.get_extension().to_lower()
 	if ext == "glb" or ext == "gltf":
-		var dependencies := _discover_gltf_dependencies(source_path)
+		var dependencies := discover_gltf_dependencies(source_path)
 		for dep_source_path in dependencies:
 			var dep_dest_path := _mirror_relative_path(source_path, dep_source_path, dest_path)
 			AssetExporter.copy_one_file(dep_source_path, dep_dest_path, result)
@@ -32,7 +32,7 @@ static func export_asset(source_path: String, dest_path: String, _bucket: String
 ## images[]/buffers[] dependency. Skips data: URIs (embedded, nothing to copy)
 ## and entries with no "uri" key (embedded via bufferView, or the .glb's own
 ## binary chunk).
-static func _discover_gltf_dependencies(source_path: String) -> Array[String]:
+static func discover_gltf_dependencies(source_path: String) -> Array[String]:
 	var deps: Array[String] = []
 
 	var doc := GLTFDocument.new()

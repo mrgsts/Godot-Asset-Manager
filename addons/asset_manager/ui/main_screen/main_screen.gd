@@ -132,6 +132,11 @@ func _on_filter_changed() -> void:
 		_sidebar.active_type_id
 	)
 
+## Entry point for the FileSystem dock's Send to Asset Manager, which has no
+## panel of its own to rebuild from.
+func rebuild_index() -> void:
+	_on_rebuild_pressed()
+
 func _on_rebuild_pressed() -> void:
 	if current_workspace_path.is_empty():
 		return

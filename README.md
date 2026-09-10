@@ -13,7 +13,7 @@
 <div align="center">
 
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](https://github.com/kivylius/asset-manager/blob/main/LICENSE)
-[![Versions](https://img.shields.io/badge/versions-v1.0.4-green.svg)](https://github.com/kivylius/asset-manager/releases)
+[![Versions](https://img.shields.io/badge/versions-v1.0.5-green.svg)](https://github.com/kivylius/asset-manager/releases)
 [![Platform](https://img.shields.io/badge/godot-4.x-red.svg)](https://github.com/kivylius/asset-manager)
 [![Language](https://img.shields.io/badge/Language-GDscript-pink.svg)](https://github.com/kivylius/asset-manager)
 [![Made with Godot](https://img.shields.io/badge/Made%20with-Godot-478CBF?style=flat&logo=godot%20engine&logoColor=white)](https://godotengine.org)
@@ -35,7 +35,7 @@ Manage all your Godot assets in a single place, get previews and send files dire
 
 ## Requirements:
 
-- Godot version: 4.7+ recommended (built and tested on 4.7; may work on earlier 4.x, untested)
+- Godot version: 4.4 minimum, 4.7+ recommended (built and tested on 4.7)
 - Platform: Windows, macOS, Linux (no native code, should work anywhere)
 
 ## Installation

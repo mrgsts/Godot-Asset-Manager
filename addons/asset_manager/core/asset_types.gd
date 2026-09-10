@@ -16,7 +16,7 @@ const ALL: Array[Dictionary] = [
 	{
 		"id": "images",
 		"label": "2D Images",
-		"extensions": ["png", "jpg", "jpeg", "webp"],
+		"extensions": ["png", "jpg", "jpeg", "webp", "svg"],
 		"default_icon": "Texture2D",
 		"default_export_path": "res://assets/images"
 	},
@@ -44,7 +44,7 @@ const ALL: Array[Dictionary] = [
 	{
 		"id": "hdris",
 		"label": "HDRIs",
-		"extensions": ["hdr", "exr"],
+		"extensions": ["hdr"],
 		"default_icon": "PanoramaSkyMaterial",
 		"default_export_path": "res://assets/hdris"
 	},
@@ -54,6 +54,7 @@ const ALL: Array[Dictionary] = [
 		"extensions": ["tres"],
 		"default_icon": "StandardMaterial3D",
 		"default_export_path": "res://assets/materials",
+		"resource_type": ["StandardMaterial3D", "ORMMaterial3D"],
 		"runners": ["materials"]
 	},
 	{
@@ -91,7 +92,7 @@ const ALL: Array[Dictionary] = [
 		"extensions": ["tres"],
 		"default_icon": "Theme",
 		"default_export_path": "res://assets/themes",
-		"resource_type": "Theme"
+		"resource_type": ["Theme"]
 	},
 	{
 		"id": "scenes",

@@ -61,7 +61,7 @@ static func _material_for(path: String) -> ShaderMaterial:
 		return null
 
 	var shader := Shader.new()
-	shader.code = TscnSceneLoader.resolve_shader_includes(source, path)
+	shader.code = PackPaths.resolve_shader_includes(source, path)
 
 	var material := ShaderMaterial.new()
 	material.shader = shader
@@ -76,7 +76,7 @@ static func render_prepared(_prepared: Variant, viewport: ThumbnailViewport, pat
 	var shader := Shader.new()
 	# Includes resolve against a resource path the in-memory shader doesn't
 	# have, substitute them first.
-	shader.code = TscnSceneLoader.resolve_shader_includes(source, path)
+	shader.code = PackPaths.resolve_shader_includes(source, path)
 
 	var material := ShaderMaterial.new()
 	material.shader = shader

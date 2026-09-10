@@ -41,7 +41,7 @@ text = "⚠"
 [node name="Text" type="Label" parent="VBox/Stage/StaticPreviewBadge/Row" unique_id=1409336682]
 layout_mode = 2
 mouse_filter = 2
-text = "Static preview · scripts ignored"
+text = "Scripts ignored"
 
 [node name="Card" type="PanelContainer" parent="VBox" unique_id=675158248]
 layout_mode = 2

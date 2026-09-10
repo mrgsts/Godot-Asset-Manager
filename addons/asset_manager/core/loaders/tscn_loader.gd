@@ -9,17 +9,10 @@ extends RefCounted
 ## ext_resource/sub_resource path= that starts with the pack's fake "res://<Root>/"
 ## prefix is resolved against the real folder the .tscn actually sits in on disk.
 
-## Which workspace bucket a scene lives under. Passed in rather than hardcoded so
-## scenes/ and effects/ share one loader, find_pack_root climbs until it sees
-## this folder name.
-const DEFAULT_BUCKET: String = "effects"
-
 ## Godot's text resource formats, same grammar as .tscn, so _load_resource_file
 ## can build any of them regardless of what the ext_resource claims the type is.
 const TEXT_RESOURCE_EXTENSIONS: PackedStringArray = ["tres", "res"]
 
-## Guard against a shader include cycle, which would otherwise recurse forever.
-const MAX_INCLUDE_DEPTH: int = 8
 
 ## Applies its own deferred writes before returning, but only on the main
 ## thread. Off-thread the batch is left for the caller to replay later, because
@@ -34,20 +27,25 @@ const MAX_INCLUDE_DEPTH: int = 8
 ## A flag that determines if this asset has a script.
 static var scripts_skipped: bool = false
 
-static func load_external(path: String, bucket: String = DEFAULT_BUCKET) -> Node:
+static func load_external(path: String, bucket: String) -> Node:
+	return load_external_in_pack(path, PackPaths.find_pack_root(path.get_base_dir(), bucket))
+
+## For a scene nested inside one already being loaded: the pack root is known,
+## so it's passed down rather than derived again from a bucket name.
+static func load_external_in_pack(path: String, pack_root: String) -> Node:
 	scripts_skipped = false
 	var batch := _begin_batch()
-	var node := _load_external_inner(path, bucket)
+	var node := _load_external_inner(path, pack_root)
 	_end_batch(batch)
 	apply_deferred_writes(batch)
 	return node
 
 ## load_external's counterpart for a standalone resource file rather than a
 ## scene: same pack-relative path resolution, no node tree.
-static func load_resource_external(path: String, bucket: String = DEFAULT_BUCKET) -> Resource:
-	return _load_resource_file(path, find_pack_root(path.get_base_dir(), bucket))
+static func load_resource_external(path: String, bucket: String) -> Resource:
+	return _load_resource_file(path, PackPaths.find_pack_root(path.get_base_dir(), bucket))
 
-static func _load_external_inner(path: String, bucket: String = DEFAULT_BUCKET) -> Node:
+static func _load_external_inner(path: String, pack_root: String) -> Node:
 
 	var text := FileAccess.get_file_as_string(path)
 	if text.is_empty():
@@ -55,7 +53,6 @@ static func _load_external_inner(path: String, bucket: String = DEFAULT_BUCKET) 
 		return null
 
 	var base_dir := path.get_base_dir()
-	var pack_root := find_pack_root(base_dir, bucket)
 
 	var ext_resources: Dictionary = {}   # id -> resolved Resource
 	var sub_resources: Dictionary = {}   # id -> resolved Resource
@@ -119,29 +116,6 @@ static func _load_external_inner(path: String, bucket: String = DEFAULT_BUCKET) 
 		i += 1
 
 	return root
-
-## A pack is whatever folder sits directly inside the workspace's effects/
-## bucket, a structural fact of the workspace layout, so it holds regardless of
-## which folders a pack happens to use internally.
-## Sniffing for a known subfolder name instead (assets/, source_files/) breaks on
-## any pack that uses neither: the search runs off the top of the pack and keeps
-## climbing to the workspace root, which is itself literally .../assets/, so
-## every path then resolves against the wrong folder.
-## Keeps walking to the LAST match rather than returning the first: a pack with
-## its own effects/ subfolder (GodotFireVFX, GodotImpactVFX) would otherwise
-## match that one and treat a folder deep inside the pack as its root. The
-## workspace bucket is always the outermost one on the path.
-static func find_pack_root(start_dir: String, bucket: String = DEFAULT_BUCKET) -> String:
-	var dir := start_dir
-	var found := ""
-	while dir != "" and dir != "/":
-		var parent := dir.get_base_dir()
-		if parent.get_file() == bucket:
-			found = dir
-		if parent == dir:
-			break
-		dir = parent
-	return found if not found.is_empty() else start_dir
 
 static func _set_owner_recursive(node: Node, owner: Node) -> void:
 	for child in node.get_children():
@@ -298,7 +272,7 @@ static func _can_use_resource_loader() -> bool:
 ## threaded parse reads them from here instead of calling load() itself.
 ## Call preload_binaries(path) on the main thread before handing a file to a
 ## worker. Scenes not preloaded still work; they just pay the slow path.
-static func preload_binaries(path: String, bucket: String = DEFAULT_BUCKET, seen: Dictionary = {}) -> void:
+static func preload_binaries(path: String, bucket: String, seen: Dictionary = {}) -> void:
 	if seen.has(path):
 		return
 	seen[path] = true
@@ -308,12 +282,12 @@ static func preload_binaries(path: String, bucket: String = DEFAULT_BUCKET, seen
 		return
 
 	var base_dir := path.get_base_dir()
-	var pack_root := find_pack_root(base_dir, bucket)
+	var pack_root := PackPaths.find_pack_root(base_dir, bucket)
 
 	var regex := RegEx.new()
 	regex.compile('\\[ext_resource[^\\]]*path="([^"]+)"')
 	for m in regex.search_all(text):
-		var real_path := resolve_pack_path(m.get_string(1), base_dir, pack_root)
+		var real_path := PackPaths.resolve_pack_path(m.get_string(1), base_dir, pack_root)
 		if real_path.is_empty() or not FileAccess.file_exists(real_path):
 			continue
 
@@ -347,11 +321,12 @@ static func clear_cache() -> void:
 	_resource_cache.clear()
 	_in_flight.clear()
 	_cache_mutex.unlock()
+	PackPaths.clear_pack_files()
 
 static func _load_ext_resource(fields: Dictionary, base_dir: String, pack_root: String) -> Resource:
 	var type: String = fields.get("type", "unknown")
 
-	var cache_key := resolve_pack_path(String(fields.get("path", "")), base_dir, pack_root) if ALLOW_RESOURCE_CACHE else ""
+	var cache_key := PackPaths.resolve_pack_path(String(fields.get("path", "")), base_dir, pack_root) if ALLOW_RESOURCE_CACHE else ""
 
 	# A cached PackedScene gets instantiate()d per use, and two threads doing that
 	# to the same one at once is the sharing this cache is otherwise careful to
@@ -396,7 +371,7 @@ static func _load_ext_resource_inner(fields: Dictionary, base_dir: String, pack_
 
 	var type: String = fields.get("type", "")
 	var raw_path: String = fields.get("path", "")
-	var real_path := resolve_pack_path(raw_path, base_dir, pack_root)
+	var real_path := PackPaths.resolve_pack_path(raw_path, base_dir, pack_root)
 	if real_path.is_empty() or not FileAccess.file_exists(real_path):
 		push_warning("AssetManager: missing ext_resource (" + type + "): " + raw_path)
 		return null
@@ -423,7 +398,7 @@ static func _load_ext_resource_inner(fields: Dictionary, base_dir: String, pack_
 			if real_path.get_extension().to_lower() in TEXT_RESOURCE_EXTENSIONS:
 				return _load_resource_file(real_path, pack_root)
 			var shader := Shader.new()
-			shader.code = resolve_shader_includes(FileAccess.get_file_as_string(real_path), real_path, pack_root)
+			shader.code = PackPaths.resolve_shader_includes(FileAccess.get_file_as_string(real_path), real_path, pack_root)
 			return shader
 		"Script":
 			scripts_skipped = true
@@ -434,7 +409,7 @@ static func _load_ext_resource_inner(fields: Dictionary, base_dir: String, pack_
 			# here: this tree is packed and freed immediately, so anything left
 			# deferred would point at freed nodes, and pack() would capture the
 			# scene before its properties were set.
-			var nested := load_external(real_path)
+			var nested := load_external_in_pack(real_path, pack_root)
 			if nested == null:
 				return null
 
@@ -477,41 +452,6 @@ static func _load_ext_resource_inner(fields: Dictionary, base_dir: String, pack_
 		_:
 			push_warning("AssetManager: unsupported ext_resource type: " + type)
 			return null
-
-## Substitutes #include directives with the file they point at, before the code
-## reaches Shader.set_code().
-## Godot's own preprocessor already handles #include, but it resolves relative to
-## the Shader's resource path (scene/resources/shader.cpp), and a Shader built
-## with Shader.new() has none, so it silently fails and the raw '#' reaches the
-## tokenizer ("Unknown character #35"). The include paths are baked absolutes
-## like every other path in these packs (often naming a *different* pack the
-## author shipped alongside this one), so they get the same resolve_pack_path
-## treatment rather than being trusted as written.
-static func resolve_shader_includes(code: String, shader_path: String, pack_root: String = "", depth: int = 0) -> String:
-	if depth > MAX_INCLUDE_DEPTH:
-		push_warning("AssetManager: shader include nested too deeply: " + shader_path)
-		return code
-
-	# a standalone shader (shaders/ bucket) has no pack, resolve baked absolute
-	# includes against its own folder instead, which is as far up as we can trust
-	var search_root := pack_root if not pack_root.is_empty() else shader_path.get_base_dir()
-
-	var regex := RegEx.new()
-	regex.compile('#include\\s+"([^"]+)"')
-
-	var out := code
-	for m in regex.search_all(code):
-		var raw_path: String = m.get_string(1)
-		var include_path := resolve_pack_path(raw_path, shader_path.get_base_dir(), search_root)
-		if include_path.is_empty() or not FileAccess.file_exists(include_path):
-			push_warning("AssetManager: missing shader include: " + raw_path)
-			out = out.replace(m.get_string(0), "")
-			continue
-
-		var included := FileAccess.get_file_as_string(include_path)
-		out = out.replace(m.get_string(0), resolve_shader_includes(included, include_path, pack_root, depth + 1))
-
-	return out
 
 ## Standalone text resource files ([gd_resource type="X"] header) share the same
 ## ext_resource/sub_resource grammar as .tscn, reuse the same block-walking
@@ -585,24 +525,6 @@ static func _load_audio_file(real_path: String) -> AudioStream:
 		_:
 			push_warning("AssetManager: unsupported audio extension: " + ext)
 			return null
-
-static func resolve_pack_path(raw_path: String, base_dir: String, pack_root: String) -> String:
-	if not raw_path.begins_with("res://"):
-		return base_dir.path_join(raw_path)
-	var stripped := raw_path.trim_prefix("res://")
-	var segments := stripped.split("/")
-	# Fake root is an unknown number of leading segments (e.g. "PolyBlocks/EffectBlocks/"
-	# or "Starter_Vfx/" or "addons/vfx_library/"), walk from the back to find a suffix
-	# that actually exists under pack_root, since we don't know the fake root's depth.
-	# Starts at 0, not 1: a pack authored with everything in the project root has no
-	# leading segment to strip at all ("res://tornado.obj"), and skipping cut=0 meant
-	# the loop never ran for those.
-	for cut in range(0, segments.size()):
-		var suffix := "/".join(segments.slice(cut))
-		var candidate := pack_root.path_join(suffix)
-		if FileAccess.file_exists(candidate):
-			return candidate
-	return ""
 
 static func _apply_properties(lines: PackedStringArray, start_i: int, obj: Object, ext_resources: Dictionary, sub_resources: Dictionary) -> int:
 	var i := start_i

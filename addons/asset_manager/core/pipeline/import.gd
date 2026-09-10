@@ -23,8 +23,8 @@ func _init() -> void:
 		"materials": MaterialsImportRunner,
 	}
 
-## Viewport_host is any node in the tree, 3D thumbnails parent an offscreen
-## viewport to it, since a viewport outside the tree never renders
+## viewport_host is any node in the tree, 3D thumbnails parent an offscreen
+## viewport to it, since a viewport outside the tree never renders.
 func run_import(workspace_path: String, database: AssetDatabase, viewport_host: Node = null) -> bool:
 	var dispatched: int = 0
 	for type_entry in AssetTypes.ALL:
