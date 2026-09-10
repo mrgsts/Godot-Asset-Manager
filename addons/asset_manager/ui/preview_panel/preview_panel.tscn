@@ -18,6 +18,31 @@ size_flags_vertical = 3
 layout_mode = 2
 mouse_filter = 1
 
+[node name="StaticPreviewBadge" type="MarginContainer" parent="VBox/Stage" unique_id=845113276]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+mouse_filter = 1
+tooltip_text = "Scripts aren't run in the preview, so anything they'd build or change isn't shown here."
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+
+[node name="Row" type="HBoxContainer" parent="VBox/Stage/StaticPreviewBadge" unique_id=1195623047]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Icon" type="Label" parent="VBox/Stage/StaticPreviewBadge/Row" unique_id=1836442915]
+layout_mode = 2
+mouse_filter = 2
+text = "⚠"
+
+[node name="Text" type="Label" parent="VBox/Stage/StaticPreviewBadge/Row" unique_id=1409336682]
+layout_mode = 2
+mouse_filter = 2
+text = "Scripts ignored"
+
 [node name="Card" type="PanelContainer" parent="VBox" unique_id=675158248]
 layout_mode = 2
 

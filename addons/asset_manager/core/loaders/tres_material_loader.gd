@@ -10,6 +10,8 @@ const KNOWN_TEXTURE_PROPERTIES: PackedStringArray = [
 	"ao_texture",
 	"heightmap_texture",
 	"emission_texture",
+	"orm_texture",
+	"subsurf_scatter_texture",
 ]
 
 static func parse_transparency(tres_path: String) -> int:

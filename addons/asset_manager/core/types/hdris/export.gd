@@ -14,7 +14,7 @@ const BG_SKY: int = 2
 const AMBIENT_SOURCE_SKY: int = 3
 const REFLECTION_SOURCE_SKY: int = 2
 
-static func export_asset(source_path: String, dest_path: String) -> Dictionary:
+static func export_asset(source_path: String, dest_path: String, _bucket: String = "") -> Dictionary:
 	var result := AssetExporter.new_result()
 
 	AssetExporter.copy_one_file(source_path, dest_path, result)

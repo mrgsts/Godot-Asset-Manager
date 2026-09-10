@@ -23,7 +23,7 @@ static func work_kind() -> int:
 ## (rendering_server_default.h:147) queues the work when called off the
 ## render thread, so embedded-texture creation during parse is fine off-thread.
 static func preload_main_thread(path: String) -> void:
-	TscnSceneLoader.preload_binaries(path)
+	TscnSceneLoader.preload_binaries(path, "effects")
 
 ## Nothing to do off-thread, effects load on the main thread in build_subject.
 static func prepare(_path: String) -> Variant:
@@ -45,7 +45,7 @@ static func wants_animation() -> bool:
 ## 2D effects return null and fall back to render_prepared below, they draw to
 ## a canvas rather than into the 3D world, can't share a batch.
 static func build_subject(_prepared: Variant, path: String) -> Node3D:
-	var node: Node = TscnSceneLoader.load_external(path)
+	var node: Node = TscnSceneLoader.load_external(path, "effects")
 	if node == null:
 		return null
 
@@ -66,7 +66,7 @@ static func render_prepared(_prepared: Variant, viewport: ThumbnailViewport, pat
 	if node != null:
 		_pending_2d.erase(path)
 	else:
-		node = TscnSceneLoader.load_external(path)
+		node = TscnSceneLoader.load_external(path, "effects")
 	if node == null:
 		return null
 

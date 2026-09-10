@@ -12,7 +12,7 @@ extends RefCounted
 ## (already computed by export.gd's export_asset(), subfolder and all), not
 ## a directory to join a filename onto. Texture dependencies are re-derived
 ## off of dest_path's base dir, same as ModelsExportHandler.
-static func export_asset(source_path: String, dest_path: String) -> Dictionary:
+static func export_asset(source_path: String, dest_path: String, _bucket: String = "") -> Dictionary:
 	var result := AssetExporter.new_result()
 
 	AssetExporter.copy_one_file(source_path, dest_path, result)

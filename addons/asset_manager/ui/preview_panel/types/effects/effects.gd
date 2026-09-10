@@ -107,7 +107,7 @@ func _add_decal_surface(node: Node) -> void:
 		mesh.size = Vector2(size.x, size.z)
 		plane.mesh = mesh
 		# X and Z are the decal's footprint; Y is how far it projects, not its
-		# size, decal_handprint_1 is 0.15 across and a full unit deep.
+		# size, a handprint decal is 0.15 across and a full unit deep.
 
 		var material := StandardMaterial3D.new()
 		# Same source as the viewport's own background, so the two can't drift.
@@ -150,7 +150,7 @@ func setup(p_settings: SettingsManager) -> void:
 func show_asset(path: String, _type_entry: Dictionary = {}) -> void:
 	visible = true
 
-	_loaded_node = TscnSceneLoader.load_external(path)
+	_loaded_node = TscnSceneLoader.load_external(path, "effects")
 	if _loaded_node == null:
 		return
 

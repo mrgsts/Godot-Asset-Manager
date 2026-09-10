@@ -16,6 +16,8 @@ const KEY_MATERIAL_SHAPE_IDX: String = "material_shape_idx"
 const KEY_HDRI_SURFACE_IDX: String = "hdri_surface_idx"
 const KEY_SHADER_OPTIONS_OPEN: String = "shader_options_open"
 const KEY_SHADER_CANVAS_DISPLAY_MODE_IDX: String = "shader_canvas_display_mode_idx"
+const KEY_VENDORS: String = "vendors"
+const KEY_VENDOR_BY_TYPE: String = "vendor_by_type"
 const KEY_SIDEBAR_WIDTH: String = "sidebar_width"
 const KEY_PREVIEW_WIDTH: String = "preview_width"
 
@@ -87,6 +89,34 @@ func get_hdri_surface_idx() -> int:
 
 func set_hdri_surface_idx(value: int) -> void:
 	_set_pref(KEY_HDRI_SURFACE_IDX, value)
+
+## Vendors are one shared list, but the last one used is remembered per asset
+## type: the same person publishes to several buckets, and which name they used
+## last differs between them.
+func get_vendors() -> Array:
+	return AssetManagerConfig.get_value(SECTION, KEY_VENDORS, [])
+
+func add_vendor(vendor: String) -> void:
+	var vendors := get_vendors()
+	if vendors.has(vendor):
+		return
+	vendors.append(vendor)
+	_set_pref(KEY_VENDORS, vendors)
+
+## Falls back to the most recent vendor added, so the first send to a new type
+## still shows a name rather than nothing.
+func get_vendor_for_type(type_id: String) -> String:
+	var by_type: Dictionary = AssetManagerConfig.get_value(SECTION, KEY_VENDOR_BY_TYPE, {})
+	if by_type.has(type_id):
+		return by_type[type_id]
+
+	var vendors := get_vendors()
+	return vendors[-1] if not vendors.is_empty() else ""
+
+func set_vendor_for_type(type_id: String, vendor: String) -> void:
+	var by_type: Dictionary = AssetManagerConfig.get_value(SECTION, KEY_VENDOR_BY_TYPE, {})
+	by_type[type_id] = vendor
+	_set_pref(KEY_VENDOR_BY_TYPE, by_type)
 
 func get_shader_options_open() -> bool:
 	return AssetManagerConfig.get_value(SECTION, KEY_SHADER_OPTIONS_OPEN, DEFAULT_SHADER_OPTIONS_OPEN)

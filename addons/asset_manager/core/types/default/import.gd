@@ -27,8 +27,8 @@ static func _walk_recursive(dir: DirAccess, current_path: String, bucket_root_pa
 				if next_dir:
 					_walk_recursive(next_dir, next_dir_path, bucket_root_path, type_entry, result)
 		else:
-			if _matches_type(file_name, type_entry):
-				var full_path := current_path.path_join(file_name)
+			var full_path := current_path.path_join(file_name)
+			if _matches_type(full_path, type_entry):
 				result.append({
 					"path": full_path,
 					"type": type_entry["id"],
@@ -39,12 +39,13 @@ static func _walk_recursive(dir: DirAccess, current_path: String, bucket_root_pa
 
 	dir.list_dir_end()
 
-static func _matches_type(file_name: String, type_entry: Dictionary) -> bool:
+static func _matches_type(file_path: String, type_entry: Dictionary) -> bool:
 	var extensions: Array = type_entry["extensions"]
-	if extensions.is_empty():
-		return true
-	var ext := file_name.get_extension().to_lower()
-	return extensions.has(ext)
+	if not extensions.is_empty() and not extensions.has(file_path.get_extension().to_lower()):
+		return false
+
+	var wanted: Array = type_entry.get("resource_type", [])
+	return wanted.is_empty() or wanted.has(ResourceHeader.type_of(file_path))
 
 const TAG_BLOCKLIST: PackedStringArray = [
 	"obj", "gltf", "glb", "fbx", "blend", "dae", "usd", "usda", "usdc",

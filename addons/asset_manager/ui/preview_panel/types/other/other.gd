@@ -2,7 +2,7 @@
 class_name OtherPreview
 extends Control
 
-## Fallback
+## Shown for an asset whose type has no preview of its own.
 
 @onready var _icon: TextureRect = $CenterContainer/VBox/Icon
 

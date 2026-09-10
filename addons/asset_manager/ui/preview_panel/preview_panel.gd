@@ -16,6 +16,7 @@ const TYPE_SCENES: Dictionary = {
 	"images": preload("res://addons/asset_manager/ui/preview_panel/types/images/images.tscn"),
 	"videos": preload("res://addons/asset_manager/ui/preview_panel/types/videos/videos.tscn"),
 	"hdris": preload("res://addons/asset_manager/ui/preview_panel/types/hdris/hdris.tscn"),
+	"themes": preload("res://addons/asset_manager/ui/preview_panel/types/themes/themes.tscn"),
 	"materials": preload("res://addons/asset_manager/ui/preview_panel/types/materials/materials.tscn"),
 	"shaders": preload("res://addons/asset_manager/ui/preview_panel/types/shaders/shaders.tscn"),
 	"effects": preload("res://addons/asset_manager/ui/preview_panel/types/effects/effects.tscn"),
@@ -38,6 +39,7 @@ var _current_type: String = ""
 @onready var _card: PanelContainer = $VBox/Card
 @onready var _name_label: Label = $VBox/Card/CardBox/Meta/FileNameLabel
 @onready var _detail_label: Label = $VBox/Card/CardBox/Meta/DetailLabel
+@onready var _static_preview_badge: MarginContainer = $VBox/Stage/StaticPreviewBadge
 @onready var _tag_editor: TagEditor = $VBox/Card/CardBox/TagEditor
 @onready var _send_button: Button = $VBox/Actions/SendToProjectButton
 @onready var _external_button: Button = $VBox/Actions/OpenExternalButton
@@ -81,6 +83,11 @@ func _apply_style() -> void:
 
 	if theme.has_color("font_disabled_color", "Editor"):
 		_detail_label.add_theme_color_override("font_color", theme.get_color("font_disabled_color", "Editor"))
+
+	if theme.has_color("warning_color", "Editor"):
+		var warning := theme.get_color("warning_color", "Editor")
+		for label in _static_preview_badge.find_children("*", "Label"):
+			label.add_theme_color_override("font_color", warning)
 
 	# Every Label in the editor theme carries its own content margins
 	# (theme_modern.cpp:1239), top and bottom padding inside the label itself,
@@ -173,8 +180,11 @@ func show_asset(path: String, type_id: String) -> void:
 	_detail_label.text = _describe(path, type_id)
 	_current_type = type_id
 
+	TscnSceneLoader.scripts_skipped = false
+
 	var body: Control = _bodies.get(type_id, _bodies["other"])
 	body.show_asset(path, AssetTypes.get_by_id(type_id))
+	_static_preview_badge.visible = TscnSceneLoader.scripts_skipped
 
 ## Pack, size and type on one line, the things you'd check before sending an
 ## asset to a project.
@@ -204,6 +214,7 @@ func clear() -> void:
 	hide_current()
 	_name_label.text = "No asset selected"
 	_detail_label.text = ""
+	_static_preview_badge.visible = false
 
 func set_actions_enabled(enabled: bool) -> void:
 	_send_button.disabled = not enabled

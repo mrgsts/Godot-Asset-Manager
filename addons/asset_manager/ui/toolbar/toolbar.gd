@@ -88,7 +88,8 @@ func set_search_text(text: String) -> void:
 func focus_search() -> void:
 	_search_input.grab_focus()
 
-## Cmd/Ctrl+F selects what's there rather than appending to it (:1177).
+## Cmd/Ctrl+F selects what's there rather than appending to it
+## (asset_library_editor_plugin.cpp:1177).
 func focus_search_and_select() -> void:
 	_search_input.grab_focus()
 	_search_input.select_all()

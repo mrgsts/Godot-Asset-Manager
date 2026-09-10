@@ -1,0 +1,65 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/asset_manager/ui/ingest_dialog/ingest_dialog.gd" id="1_ingest"]
+
+[node name="IngestDialog" type="ConfirmationDialog"]
+title = "Send to Asset Manager"
+ok_button_text = "Send"
+script = ExtResource("1_ingest")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+theme_override_constants/separation = 8
+
+[node name="NameLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Folder name"
+
+[node name="NameEdit" type="LineEdit" parent="VBox"]
+layout_mode = 2
+
+[node name="ErrorLabel" type="Label" parent="VBox"]
+visible = false
+layout_mode = 2
+
+[node name="VendorLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Vendor"
+
+[node name="VendorOption" type="OptionButton" parent="VBox"]
+layout_mode = 2
+selected = 0
+item_count = 2
+popup/item_0/text = "(none)"
+popup/item_1/text = "New vendor..."
+popup/item_1/id = 1
+
+[node name="DestinationLabel" type="Label" parent="VBox"]
+layout_mode = 2
+
+[node name="NewVendorDialog" type="ConfirmationDialog" parent="."]
+title = "New vendor"
+ok_button_text = "Add"
+
+[node name="NewVendorBox" type="VBoxContainer" parent="NewVendorDialog"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+theme_override_constants/separation = 8
+
+[node name="NewVendorEdit" type="LineEdit" parent="NewVendorDialog/NewVendorBox"]
+layout_mode = 2
+
+[node name="NewVendorError" type="Label" parent="NewVendorDialog/NewVendorBox"]
+visible = false
+layout_mode = 2

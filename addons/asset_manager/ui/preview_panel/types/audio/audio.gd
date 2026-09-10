@@ -40,10 +40,9 @@ func _ready() -> void:
 	_setup_icons()
 	_style_transport()
 
-## The editor's own background colour, surface_lowest_color, base_color dimmed
-## by 1.7 (theme_modern.cpp:192), the darkest surface the theme defines. Follows
-## a theme change rather than staying flat black. Only the bottom corners round,
-## so card and panel above read as one surface.
+## Takes the editor's own darkest surface (theme_modern.cpp:192) so the card
+## follows a theme change, and rounds only its bottom corners so the panel above
+## reads as the same surface.
 func _style_transport() -> void:
 	if not Engine.is_editor_hint():
 		return

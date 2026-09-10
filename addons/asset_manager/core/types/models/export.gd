@@ -13,14 +13,14 @@ const DEPENDENCY_URI_KEYS: PackedStringArray = ["images", "buffers"]
 ## (already computed by export.gd's export_asset(), subfolder and all),
 ## not a directory to join a filename onto. Handlers only re-derive a path
 ## for their own DEPENDENCIES, off of dest_path's base dir.
-static func export_asset(source_path: String, dest_path: String) -> Dictionary:
+static func export_asset(source_path: String, dest_path: String, _bucket: String = "") -> Dictionary:
 	var result := AssetExporter.new_result()
 
 	AssetExporter.copy_one_file(source_path, dest_path, result)
 
 	var ext := source_path.get_extension().to_lower()
 	if ext == "glb" or ext == "gltf":
-		var dependencies := _discover_gltf_dependencies(source_path)
+		var dependencies := discover_gltf_dependencies(source_path)
 		for dep_source_path in dependencies:
 			var dep_dest_path := _mirror_relative_path(source_path, dep_source_path, dest_path)
 			AssetExporter.copy_one_file(dep_source_path, dep_dest_path, result)
@@ -32,7 +32,7 @@ static func export_asset(source_path: String, dest_path: String) -> Dictionary:
 ## images[]/buffers[] dependency. Skips data: URIs (embedded, nothing to copy)
 ## and entries with no "uri" key (embedded via bufferView, or the .glb's own
 ## binary chunk).
-static func _discover_gltf_dependencies(source_path: String) -> Array[String]:
+static func discover_gltf_dependencies(source_path: String) -> Array[String]:
 	var deps: Array[String] = []
 
 	var doc := GLTFDocument.new()

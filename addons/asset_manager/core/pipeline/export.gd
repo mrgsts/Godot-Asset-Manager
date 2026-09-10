@@ -9,6 +9,7 @@ extends RefCounted
 const HANDLERS: Dictionary = {
 	"models": preload("res://addons/asset_manager/core/types/models/export.gd"),
 	"hdris": preload("res://addons/asset_manager/core/types/hdris/export.gd"),
+	"themes": preload("res://addons/asset_manager/core/types/themes/export.gd"),
 	"materials": preload("res://addons/asset_manager/core/types/materials/export.gd"),
 	"shaders": preload("res://addons/asset_manager/core/types/shaders/export.gd"),
 	"effects": preload("res://addons/asset_manager/core/types/effects/export.gd"),
@@ -57,19 +58,14 @@ static func copy_one_file(source_path: String, dest_path: String, result: Dictio
 	else:
 		result["errors"].append("Failed to copy (" + str(err) + "): " + source_path)
 
-## Keeps only the FIRST folder segment below the asset's type root as a
-## subfolder in dest_dir, the same one-level-deep convention auto-tags use.
-## Without it every material's and model's files land in one flat folder and
-## collide.
-## e.g. materials/Rock033_2K/Rock033_2K.tres -> dest_dir/Rock033_2K/Rock033_2K.tres
-##      models/kenney/a/b/c/prop.glb         -> dest_dir/kenney/prop.glb
-## dest_path is computed here, once, then handed to the type handler. Every
-## handler builds its dependency copies off that same base dir, so they
-## inherit the preserved subfolder for free.
+## Mirrors the asset's path below its type root into dest_dir. Anything less
+## collapses the variant folders packs use to organise themselves, and two
+## sources landing on one destination means the second is silently skipped by
+## copy_one_file's "already exists" check.
 static func export_asset(source_path: String, dest_dir: String, type_id: String, workspace_path: String) -> Dictionary:
 	var handler: Variant = HANDLERS.get(type_id, DEFAULT_HANDLER)
 	var dest_path := _compute_dest_path(source_path, dest_dir, type_id, workspace_path)
-	return handler.export_asset(source_path, dest_path)
+	return handler.export_asset(source_path, dest_path, type_id)
 
 static func _compute_dest_path(source_path: String, dest_dir: String, type_id: String, workspace_path: String) -> String:
 	var bucket_root := workspace_path.path_join(type_id)
@@ -82,9 +78,4 @@ static func _compute_dest_path(source_path: String, dest_dir: String, type_id: S
 	if relative.is_empty():
 		return dest_dir.path_join(source_path.get_file())
 
-	var first_segment := relative.split("/")[0]
-	if first_segment == relative:
-		# File sits directly in the bucket root, no subfolder to preserve.
-		return dest_dir.path_join(source_path.get_file())
-
-	return dest_dir.path_join(first_segment).path_join(source_path.get_file())
+	return dest_dir.path_join(relative)

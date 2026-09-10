@@ -18,6 +18,7 @@ const RENDERERS: Dictionary = {
 	"images": preload("res://addons/asset_manager/core/types/images/thumb.gd"),
 	"models": preload("res://addons/asset_manager/core/types/models/thumb.gd"),
 	"hdris": preload("res://addons/asset_manager/core/types/hdris/thumb.gd"),
+	"themes": preload("res://addons/asset_manager/core/types/themes/thumb.gd"),
 	"materials": preload("res://addons/asset_manager/core/types/materials/thumb.gd"),
 	"scenes": preload("res://addons/asset_manager/core/types/scenes/thumb.gd"),
 	"effects": preload("res://addons/asset_manager/core/types/effects/thumb.gd"),
