@@ -12,3 +12,5 @@ columns = 2
 allow_rmb_select = true
 hide_root = true
 select_mode = 1
+
+[node name="TypeContextMenu" type="PopupMenu" parent="."]

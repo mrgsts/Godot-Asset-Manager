@@ -1,0 +1,29 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/asset_manager/ui/shared/vendor_picker/vendor_picker.gd" id="1_0y2sh"]
+
+[node name="VendorPicker" type="OptionButton"]
+script = ExtResource("1_0y2sh")
+
+[node name="NewVendorDialog" type="ConfirmationDialog" parent="."]
+title = "New vendor"
+ok_button_text = "Add"
+
+[node name="NewVendorBox" type="VBoxContainer" parent="NewVendorDialog"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+theme_override_constants/separation = 8
+
+[node name="NewVendorEdit" type="LineEdit" parent="NewVendorDialog/NewVendorBox"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+placeholder_text = "Vendor name"
+
+[node name="NewVendorError" type="Label" parent="NewVendorDialog/NewVendorBox"]
+visible = false
+layout_mode = 2

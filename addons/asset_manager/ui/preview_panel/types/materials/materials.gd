@@ -70,7 +70,9 @@ func show_asset(path: String, _type_entry: Dictionary = {}) -> void:
 	var my_token := _load_token
 
 	var material := StandardMaterial3D.new()
-	material.transparency = TresMaterialLoader.parse_transparency(path)
+	var properties := TresMaterialLoader.parse_properties(path)
+	for property_name in properties:
+		material.set(property_name, properties[property_name])
 	_mesh_instance.material_override = material
 
 	var texture_paths := TresMaterialLoader.parse_texture_paths(path)
@@ -95,6 +97,7 @@ func _load_and_apply_texture(material: StandardMaterial3D, property_name: String
 			material.ao_enabled = true
 		"heightmap_texture":
 			material.heightmap_enabled = true
+			material.heightmap_deep_parallax = true
 
 
 

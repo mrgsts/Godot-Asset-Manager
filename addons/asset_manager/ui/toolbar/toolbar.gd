@@ -6,17 +6,20 @@ extends MarginContainer
 ## decides what each one means.
 signal sidebar_toggled(collapsed: bool)
 signal rebuild_pressed
-signal add_files_pressed
+signal add_pressed(type_id: String)
 signal search_changed(text: String)
 signal settings_pressed
 
 @onready var _sidebar_btn: Button = $HBox/SidebarButton
+@onready var _add_btn: MenuButton = $HBox/AddButton
 @onready var _rebuild_btn: Button = $HBox/RebuildButton
-@onready var _add_files_btn: Button = $HBox/AddFilesButton
 @onready var _search_input: LineEdit = $HBox/SearchInput
 @onready var _settings_btn: Button = $HBox/SettingsButton
 
 var _sidebar_collapsed: bool = false
+
+## Types in menu order, so an item's id maps straight back to one.
+var _add_type_ids: Array[String] = []
 
 func _ready() -> void:
 	if EditorGuard.is_scene_tab(self):
@@ -24,13 +27,24 @@ func _ready() -> void:
 
 	_sidebar_btn.pressed.connect(_on_sidebar_button_pressed)
 	_rebuild_btn.pressed.connect(func() -> void: rebuild_pressed.emit())
-	_add_files_btn.pressed.connect(func() -> void: add_files_pressed.emit())
 	_search_input.text_changed.connect(func(text: String) -> void: search_changed.emit(text))
 	_settings_btn.pressed.connect(func() -> void: settings_pressed.emit())
 
+	_build_add_menu()
 	_apply_icons()
 	_apply_spacing()
 	_update_sidebar_icon(false)
+
+func _build_add_menu() -> void:
+	var popup := _add_btn.get_popup()
+	_add_type_ids = TypeMenu.populate(popup)
+
+	if not popup.id_pressed.is_connected(_on_add_type_selected):
+		popup.id_pressed.connect(_on_add_type_selected)
+
+func _on_add_type_selected(id: int) -> void:
+	if id >= 0 and id < _add_type_ids.size():
+		add_pressed.emit(_add_type_ids[id])
 
 func _apply_spacing() -> void:
 	if not Engine.is_editor_hint():
@@ -43,8 +57,8 @@ func _apply_spacing() -> void:
 ## Godot's own icons rather than drawn ones, so the toolbar re-themes with the
 ## editor and matches the docks either side of it.
 func _apply_icons() -> void:
+	_set_icon(_add_btn, "Add")
 	_set_icon(_rebuild_btn, "Reload")
-	_set_icon(_add_files_btn, "Add")
 	_set_icon(_settings_btn, "Tools")
 
 	# same treatment Godot gives its own filter fields (filesystem_dock.cpp:663)
@@ -74,7 +88,7 @@ func _update_sidebar_icon(collapsed: bool) -> void:
 ## looking unresponsive.
 func set_rebuilding(rebuilding: bool) -> void:
 	_rebuild_btn.disabled = rebuilding
-	_add_files_btn.disabled = rebuilding
+	_add_btn.disabled = rebuilding
 	_rebuild_btn.tooltip_text = "Rebuilding…" if rebuilding else "Rebuild Index"
 
 func search_text() -> String:

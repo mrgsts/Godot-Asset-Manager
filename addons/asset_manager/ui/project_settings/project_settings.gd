@@ -2,12 +2,16 @@
 class_name ProjectSettingsDialog
 extends AcceptDialog
 
+signal switch_workspace_requested
+
 const PROJECT_SETTING_EXPORT_ROOTS: String = "asset_manager/export_roots"
 
 var _export_root_edits: Dictionary = {} ## type_id -> LineEdit
 var _export_root_dialog: FileDialog
 var _export_root_dialog_target: String = ""
 
+@onready var _workspace_path_label: Label = $VBox/WorkspaceRow/WorkspacePathLabel
+@onready var _switch_button: Button = $VBox/WorkspaceRow/SwitchButton
 @onready var _export_roots_vbox: VBoxContainer = $VBox/ExportRootsVBox
 @onready var _version_label: Label = $VBox/Footer/FooterBox/VersionLabel
 
@@ -16,6 +20,11 @@ func _ready() -> void:
 		return
 
 	_version_label.text = "Asset Manager v" + _get_plugin_version()
+
+	_switch_button.pressed.connect(func() -> void:
+		hide()
+		switch_workspace_requested.emit()
+	)
 
 	_export_root_dialog = FileDialog.new()
 	_export_root_dialog.title = "Choose Export Destination"
@@ -84,6 +93,9 @@ func _populate_ui_from_settings() -> void:
 
 func open() -> void:
 	_populate_ui_from_settings()
+	var workspace: String = AssetManagerConfig.get_value("workspace", "path", "")
+	_workspace_path_label.text = workspace if not workspace.is_empty() else "No workspace open"
+	_workspace_path_label.tooltip_text = workspace
 	popup_centered(size)
 
 func get_export_root(type_id: String) -> String:

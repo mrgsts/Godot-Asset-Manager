@@ -52,7 +52,7 @@ static func prepare(path: String) -> Variant:
 	if images.is_empty():
 		return null
 
-	return {"images": images, "transparency": TresMaterialLoader.parse_transparency(path)}
+	return {"images": images, "properties": TresMaterialLoader.parse_properties(path)}
 
 ## The rasterizer discards every texel past the thumbnail's own size, so shrink
 ## here on the worker (Image.resize is pure CPU, no thread guard). Bilinear, not
@@ -91,7 +91,9 @@ static func _build(prepared: Variant) -> Node3D:
 		return null
 
 	var material := StandardMaterial3D.new()
-	material.transparency = int(prepared["transparency"])
+	var properties: Dictionary = prepared["properties"]
+	for property_name: String in properties:
+		material.set(property_name, properties[property_name])
 
 	var images: Dictionary = prepared["images"]
 	for property_name: String in images:

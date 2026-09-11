@@ -1,0 +1,52 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://addons/asset_manager/ui/shared/preview_carousel/preview_carousel.gd" id="1_80o8i"]
+
+[node name="PreviewCarousel" type="VBoxContainer"]
+theme_override_constants/separation = 8
+script = ExtResource("1_80o8i")
+
+[node name="Hero" type="TextureRect" parent="."]
+layout_mode = 2
+expand_mode = 5
+stretch_mode = 5
+
+[node name="HeroNext" type="TextureRect" parent="Hero"]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NoPreview" type="VBoxContainer" parent="Hero"]
+visible = false
+modulate = Color(1, 1, 1, 0.3)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Hero/NoPreview"]
+layout_mode = 2
+size_flags_horizontal = 4
+stretch_mode = 3
+
+[node name="Caption" type="Label" parent="Hero/NoPreview"]
+layout_mode = 2
+text = "No preview image available"
+horizontal_alignment = 1
+
+[node name="Dots" type="HBoxContainer" parent="."]
+visible = false
+layout_mode = 2
+alignment = 1

@@ -70,6 +70,21 @@ func setup(host: Node, size: int) -> void:
 	env.ambient_light_color = Color(1, 1, 1)
 	env.ambient_light_energy = 0.4
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+
+	# A metal has almost no colour of its own, it shows what is around it, and
+	# with nothing there it renders black. REFLECTION_SOURCE_SKY gives it
+	# something to reflect "regardless of what the background is", so the
+	# thumbnails stay transparent.
+	var sky_material := ProceduralSkyMaterial.new()
+	sky_material.sky_top_color = Color(0.38, 0.45, 0.55)
+	sky_material.sky_horizon_color = Color(0.55, 0.56, 0.58)
+	sky_material.ground_bottom_color = Color(0.2, 0.2, 0.2)
+	sky_material.ground_horizon_color = Color(0.3, 0.3, 0.3)
+	var sky := Sky.new()
+	sky.sky_material = sky_material
+	env.sky = sky
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+
 	world.environment = env
 	_viewport.world_3d = world
 

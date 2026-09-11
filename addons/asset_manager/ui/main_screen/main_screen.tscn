@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://befx1hxq27fy7" path="res://addons/asset_manager/ui/sidebar/sidebar.tscn" id="4_hv5vg"]
 [ext_resource type="PackedScene" uid="uid://bbd2q7dp28pfk" path="res://addons/asset_manager/ui/grid/grid.tscn" id="5_ogqh4"]
 [ext_resource type="PackedScene" uid="uid://c53eum4ytt0xr" path="res://addons/asset_manager/ui/preview_panel/preview_panel.tscn" id="6_wvjpn"]
+[ext_resource type="PackedScene" path="res://addons/asset_manager/ui/add_dialog/add_dialog.tscn" id="7_2420v"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0fbkt"]
 content_margin_left = 12.0
@@ -94,15 +95,18 @@ ok_button_text = "Select Current Folder"
 file_mode = 2
 access = 2
 
-[node name="AddFilesDialog" type="FileDialog" parent="."]
-title = "Add PNGs to Asset Manager"
+[node name="AddFileDialog" type="FileDialog" parent="."]
+title = "Add assets"
 size = Vector2i(900, 650)
-ok_button_text = "Add PNGs"
-file_mode = 1
+ok_button_text = "Open"
+file_mode = 0
 access = 2
-filters = PackedStringArray("*.png ; PNG images")
+
+[node name="AddDialog" parent="." instance=ExtResource("7_2420v")]
 
 [node name="ProjectSettingsDialog" parent="." unique_id=1566484091 instance=ExtResource("2_mxsfc")]
+
+[node name="DropTypeMenu" type="PopupMenu" parent="."]
 
 [node name="TagContextMenu" type="PopupMenu" parent="." unique_id=1685252106]
 item_count = 1

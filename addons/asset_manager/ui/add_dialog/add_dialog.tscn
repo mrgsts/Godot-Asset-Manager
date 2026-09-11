@@ -1,0 +1,120 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/asset_manager/ui/add_dialog/add_dialog.gd" id="1_jviyf"]
+[ext_resource type="PackedScene" path="res://addons/asset_manager/ui/shared/vendor_picker/vendor_picker.tscn" id="2_dwuef"]
+[ext_resource type="PackedScene" path="res://addons/asset_manager/ui/shared/preview_carousel/preview_carousel.tscn" id="3_5nyji"]
+
+[node name="AddDialog" type="ConfirmationDialog"]
+title = "Add"
+ok_button_text = "Add"
+script = ExtResource("1_jviyf")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="Carousel" parent="VBox" instance=ExtResource("3_5nyji")]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Pack"
+text_overrun_behavior = 3
+
+[node name="SummaryLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text_overrun_behavior = 3
+
+[node name="FormatRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="FormatLabel" type="Label" parent="VBox/FormatRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "Format"
+
+[node name="FormatOption" type="OptionButton" parent="VBox/FormatRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VariantRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="VariantLabel" type="Label" parent="VBox/VariantRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "Variant"
+
+[node name="VariantOption" type="OptionButton" parent="VBox/VariantRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VendorRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="VendorLabel" type="Label" parent="VBox/VendorRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "Vendor"
+
+[node name="VendorOption" parent="VBox/VendorRow" instance=ExtResource("2_dwuef")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NameRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="NameFieldLabel" type="Label" parent="VBox/NameRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "Name  "
+
+[node name="NameEdit" type="LineEdit" parent="VBox/NameRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NameError" type="Label" parent="VBox"]
+visible = false
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="DestinationLabel" type="Label" parent="VBox"]
+layout_mode = 2
+mouse_filter = 0
+text_overrun_behavior = 3
+
+[node name="WarningLabel" type="Label" parent="VBox"]
+visible = false
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="NewVendorDialog" type="ConfirmationDialog" parent="."]
+title = "New Vendor"
+ok_button_text = "Add"
+
+[node name="NewVendorBox" type="VBoxContainer" parent="NewVendorDialog"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+
+[node name="NewVendorEdit" type="LineEdit" parent="NewVendorDialog/NewVendorBox"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+placeholder_text = "Vendor name"
+
+[node name="NewVendorError" type="Label" parent="NewVendorDialog/NewVendorBox"]
+visible = false
+layout_mode = 2

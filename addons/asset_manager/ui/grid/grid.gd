@@ -7,6 +7,10 @@ extends PanelContainer
 ## touching the preview or the tag editor.
 signal selection_changed(path: String)
 signal item_activated(path: String)
+signal open_location_requested
+signal open_external_requested
+signal send_to_project_requested
+signal add_requested(type_id: String)
 
 var database: AssetDatabase
 var settings: SettingsManager
@@ -26,7 +30,16 @@ var _total_pages: int = 1
 @onready var _empty_state: CenterContainer = $VBox/GridStack/EmptyState
 @onready var _empty_title: Label = $VBox/GridStack/EmptyState/EmptyBox/TitleLabel
 @onready var _empty_body: Label = $VBox/GridStack/EmptyState/EmptyBox/BodyLabel
-@onready var _open_folder_button: Button = $VBox/GridStack/EmptyState/EmptyBox/OpenFolderButton
+@onready var _empty_buttons: HBoxContainer = $VBox/GridStack/EmptyState/EmptyBox/EmptyButtons
+@onready var _open_folder_button: Button = $VBox/GridStack/EmptyState/EmptyBox/EmptyButtons/OpenFolderButton
+@onready var _add_asset_button: MenuButton = $VBox/GridStack/EmptyState/EmptyBox/EmptyButtons/AddAssetButton
+@onready var _context_menu: PopupMenu = $AssetContextMenu
+
+var _add_type_ids: Array[String] = []
+
+const MENU_OPEN_LOCATION: int = 0
+const MENU_OPEN_EXTERNAL: int = 1
+const MENU_SEND_TO_PROJECT: int = 2
 
 func _ready() -> void:
 	if EditorGuard.is_scene_tab(self):
@@ -35,6 +48,8 @@ func _ready() -> void:
 	_list.item_selected.connect(_on_item_selected)
 	_list.item_activated.connect(_on_item_activated)
 	_list.gui_input.connect(_on_list_gui_input)
+	_list.item_clicked.connect(_on_item_clicked)
+	_context_menu.id_pressed.connect(_on_context_menu_pressed)
 
 	_subbar.sort_changed.connect(_on_sort_changed)
 	_subbar.page_changed.connect(_on_page_changed)
@@ -45,6 +60,16 @@ func _ready() -> void:
 	_open_folder_button.pressed.connect(func() -> void:
 		if database != null and not database.workspace_path.is_empty():
 			OS.shell_open(database.workspace_path)
+	)
+
+	_add_asset_button.icon = IconHelper.get_icon("Add")
+	_open_folder_button.icon = IconHelper.get_icon("Folder")
+
+	var add_popup := _add_asset_button.get_popup()
+	_add_type_ids = TypeMenu.populate(add_popup)
+	add_popup.id_pressed.connect(func(id: int) -> void:
+		if id >= 0 and id < _add_type_ids.size():
+			add_requested.emit(_add_type_ids[id])
 	)
 
 	var blank := Image.create_empty(1, 1, false, Image.FORMAT_RGBA8)
@@ -142,12 +167,12 @@ func _update_empty_state(matched_count: int) -> void:
 
 	if database.assets.is_empty():
 		_empty_title.text = "This workspace is empty"
-		_empty_body.text = "Use Add PNGs above, or copy assets into\n%s\nthen press Rebuild Index." % database.workspace_path
-		_open_folder_button.visible = true
+		_empty_body.text = "Add an asset pack, or copy files into\n%s\nthen press Rebuild." % database.workspace_path
+		_empty_buttons.visible = true
 	else:
 		_empty_title.text = "Nothing to show"
 		_empty_body.text = "No assets match the current filters."
-		_open_folder_button.visible = false
+		_empty_buttons.visible = false
 
 	_empty_state.visible = true
 
@@ -312,6 +337,33 @@ func _on_item_selected(index: int) -> void:
 
 func _on_item_activated(index: int) -> void:
 	item_activated.emit(_list.get_item_metadata(index))
+
+## The same three actions the preview panel offers, on whichever asset was
+## right-clicked. allow_rmb_select means it is already the selection by now.
+func _on_item_clicked(index: int, at_position: Vector2, mouse_button_index: int) -> void:
+	if mouse_button_index != MOUSE_BUTTON_RIGHT:
+		return
+
+	selection_changed.emit(_list.get_item_metadata(index))
+
+	_context_menu.clear()
+	_context_menu.add_icon_item(IconHelper.get_icon("Folder"), "Open Folder", MENU_OPEN_LOCATION)
+	_context_menu.add_icon_item(IconHelper.get_icon("ExternalLink"), "Open in Default Application", MENU_OPEN_EXTERNAL)
+	_context_menu.add_separator()
+	_context_menu.add_icon_item(IconHelper.get_icon("Add"), "Send to Project", MENU_SEND_TO_PROJECT)
+
+	_context_menu.position = Vector2i(_list.get_screen_position() + at_position)
+	_context_menu.reset_size()
+	_context_menu.popup()
+
+func _on_context_menu_pressed(id: int) -> void:
+	match id:
+		MENU_OPEN_LOCATION:
+			open_location_requested.emit()
+		MENU_OPEN_EXTERNAL:
+			open_external_requested.emit()
+		MENU_SEND_TO_PROJECT:
+			send_to_project_requested.emit()
 
 ## Shift+scroll resizes tiles, the same gesture every canvas app trains, the
 ## slider in the sub-toolbar is the discoverable version of it.

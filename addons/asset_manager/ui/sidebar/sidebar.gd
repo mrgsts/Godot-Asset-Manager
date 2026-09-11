@@ -3,6 +3,8 @@ class_name SidebarNavigator
 extends VBoxContainer
 
 signal filter_changed
+signal open_folder_requested(path: String)
+signal add_requested(type_id: String)
 
 ## Tags past this are hidden behind "Show more", an unbounded list buries
 ## extensions below the fold.
@@ -25,6 +27,14 @@ var _tags_expanded: bool = false
 var _collapsed_sections: Dictionary = {}
 
 @onready var _tree: Tree = $AssetTree
+@onready var _type_menu: PopupMenu = $TypeContextMenu
+
+## Which type the open menu belongs to, so its items don't have to carry it.
+var _menu_type_id: String = ""
+var _menu_folder_path: String = ""
+
+const MENU_OPEN_FOLDER: int = 0
+const MENU_ADD: int = 1
 
 ## Both taken from Godot's own docks, and both scaled by get_editor_scale(),
 ## a raw pixel value is half its intended size on a 200% display.
@@ -53,6 +63,8 @@ func _ready() -> void:
 	_tree.item_selected.connect(_on_item_selected)
 	_tree.item_edited.connect(_on_item_edited)
 	_tree.item_collapsed.connect(_on_item_collapsed)
+	_tree.item_mouse_selected.connect(_on_item_mouse_selected)
+	_type_menu.id_pressed.connect(_on_type_menu_pressed)
 
 	_apply_panel_style()
 
@@ -327,6 +339,43 @@ func _on_item_selected() -> void:
 	# Godot refuses to rebuild a Tree while it's dispatching a selection.
 	call_deferred("refresh")
 	call_deferred("emit_signal", "filter_changed")
+
+## Type headings only. Subfolders carry a type_id too, so the path has to be
+## the bucket root itself for the menu to mean what it says.
+func _on_item_mouse_selected(position: Vector2, mouse_button_index: int) -> void:
+	if mouse_button_index != MOUSE_BUTTON_RIGHT:
+		return
+
+	var item := _tree.get_selected()
+	if item == null:
+		return
+
+	var meta: Variant = item.get_metadata(COL_NAME)
+	if not (meta is Dictionary) or meta.get("type") != "folder":
+		return
+
+	var type_id: String = meta.get("type_id", "")
+	var path: String = meta.get("path", "")
+	if type_id.is_empty() or path != workspace_path.path_join(type_id):
+		return
+
+	_menu_type_id = type_id
+	_menu_folder_path = path
+
+	_type_menu.clear()
+	_type_menu.add_icon_item(_icon_for("Folder"), "Open Folder", MENU_OPEN_FOLDER)
+	_type_menu.add_icon_item(_icon_for("Add"), "Add %s…" % type_id, MENU_ADD)
+
+	_type_menu.position = Vector2i(_tree.get_screen_position() + position)
+	_type_menu.reset_size()
+	_type_menu.popup()
+
+func _on_type_menu_pressed(id: int) -> void:
+	match id:
+		MENU_OPEN_FOLDER:
+			open_folder_requested.emit(_menu_folder_path)
+		MENU_ADD:
+			add_requested.emit(_menu_type_id)
 
 func _on_item_edited() -> void:
 	var item := _tree.get_edited()

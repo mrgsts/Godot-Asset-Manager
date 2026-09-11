@@ -2,6 +2,7 @@
 class_name TresMaterialLoader
 extends RefCounted
 
+## Texture parths from file.
 const KNOWN_TEXTURE_PROPERTIES: PackedStringArray = [
 	"albedo_texture",
 	"normal_texture",
@@ -14,17 +15,28 @@ const KNOWN_TEXTURE_PROPERTIES: PackedStringArray = [
 	"subsurf_scatter_texture",
 ]
 
-static func parse_transparency(tres_path: String) -> int:
+## Properties the preview can't infer from the textures it found.
+const KNOWN_PROPERTIES: PackedStringArray = [
+	"transparency",
+	"metallic",
+	"heightmap_scale",
+]
+
+static func parse_properties(tres_path: String) -> Dictionary:
 	var file := FileAccess.open(tres_path, FileAccess.READ)
 	if not file:
-		return 0
+		return {}
 
+	var values: Dictionary = {}
 	while not file.eof_reached():
 		var line := file.get_line()
-		if line.begins_with("transparency = "):
-			return line.trim_prefix("transparency = ").to_int()
+		for property_name in KNOWN_PROPERTIES:
+			if line.begins_with(property_name + " = "):
+				# transparency is an enum (material.cpp:3559), metallic a float.
+				var raw := line.trim_prefix(property_name + " = ")
+				values[property_name] = raw.to_float() if raw.contains(".") else raw.to_int()
 
-	return 0
+	return values
 
 static func parse_texture_paths(tres_path: String) -> Dictionary:
 	var file := FileAccess.open(tres_path, FileAccess.READ)
