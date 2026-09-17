@@ -65,8 +65,40 @@ static func copy_one_file(source_path: String, dest_path: String, result: Dictio
 ## copy_one_file's "already exists" check.
 static func export_asset(source_path: String, dest_dir: String, type_id: String, workspace_path: String) -> Dictionary:
 	var handler: Variant = HANDLERS.get(type_id, DEFAULT_HANDLER)
-	var dest_path := _compute_dest_path(source_path, dest_dir, type_id, workspace_path)
+	var dest_path := match_existing_case(_compute_dest_path(source_path, dest_dir, type_id, workspace_path))
 	return handler.export_asset(source_path, dest_path, type_id)
+
+## Spells each folder of path the way it already exists on disk. On a
+## case-insensitive filesystem "res://assets" lands in an existing "Assets"
+## folder, while the references written into the copies would still say
+## "assets": Godot warns on every load, and the paths break on case-sensitive
+## platforms. Folders that don't exist yet keep the spelling given.
+static func match_existing_case(path: String) -> String:
+	var prefix := "res://" if path.begins_with("res://") else "/"
+	var segments := path.trim_prefix(prefix).split("/", false)
+	var current := prefix
+
+	for i in segments.size():
+		var dir := DirAccess.open(current)
+		if dir == null:
+			return current.path_join("/".join(segments.slice(i)))
+
+		var wanted: String = segments[i]
+		var on_disk := wanted
+		if not dir.dir_exists(wanted) and not dir.file_exists(wanted):
+			return current.path_join("/".join(segments.slice(i)))
+
+		dir.include_hidden = true
+		for entry in dir.get_directories() + dir.get_files():
+			if entry == wanted:
+				on_disk = entry
+				break
+			if entry.nocasecmp_to(wanted) == 0:
+				on_disk = entry
+
+		current = current.path_join(on_disk)
+
+	return current
 
 static func _compute_dest_path(source_path: String, dest_dir: String, type_id: String, workspace_path: String) -> String:
 	var bucket_root := workspace_path.path_join(type_id)
