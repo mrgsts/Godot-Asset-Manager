@@ -58,10 +58,14 @@ writes them, in the `unreal/` folder of the workspace:
   recognised by what they are rather than where they sit, whatever content
   tree the Unreal project used (`Meshes/Props`, `Mesh/CaveModules`,
   `Assets/Candle/Static_Mesh`...).
-- Tags come from the vendor and pack folder names, plus, for meshes and the
-  prefabs built on them, the folder holding the model (`props`, `candle`),
-  skipping generic ones like `Meshes` or `Static_Mesh`. Rebuild keeps these up
-  to date without touching tags added or removed by hand.
+- Tags come from the vendor folder (if any) and from the Unreal project's own
+  content folder underneath the pack root, not the pack root's own name — that
+  is whatever the export was called, which for a fab.com listing can run to a
+  whole sentence. Vendor wrapper folders that hold nothing else are seen
+  through (`BefourStudios/RetroHouse` tags `retrohouse`). Meshes and the
+  prefabs built on them also get the folder holding the model (`props`,
+  `candle`), skipping generic ones like `Meshes` or `Static_Mesh`. Rebuild
+  keeps these up to date without touching tags added or removed by hand.
 - **Send to Project** copies the asset and everything it uses to
   `res://assets/unreal/<Pack>/`, keeping the export's layout below it. Packs stay
   apart because every export has its own `Prefabs/`, `Shaders/` and `Engine/`,

@@ -29,6 +29,15 @@ const GENERIC_MESH_FOLDERS: PackedStringArray = [
 	"models", "model", "assets", "geometry",
 ]
 
+## Same idea as GENERIC_MESH_FOLDERS, widened with the material/texture names a
+## content root's own children are called, for content_root_tag's unwrapping.
+const GENERIC_CONTENT_FOLDERS: PackedStringArray = [
+	"meshes", "mesh", "static_mesh", "static_meshes", "staticmesh", "staticmeshes",
+	"models", "model", "assets", "geometry",
+	"materials", "material", "material_instance", "materialinstance",
+	"textures", "texture",
+]
+
 ## Pack-root scenes that are plumbing for the levels rather than levels.
 const NON_LEVEL_SCENES: PackedStringArray = ["WorldEnvironment.tscn"]
 
@@ -126,6 +135,46 @@ static func mesh_folder_tag(path: String) -> String:
 		if not folder.is_empty() and not GENERIC_MESH_FOLDERS.has(folder):
 			return folder
 	return ""
+
+## The folder that actually holds the Unreal content, as a tag: not the pack
+## root's own name (that is whatever the fab.com listing was called, which can
+## run "Orbital_Base_Environment_(_Modular_Sci-Fi_Space_Station_w_Tools_)"
+## long), but the folder the Unreal project itself used underneath, the one
+## whose children are "Materials"/"Meshes"/"Textures" (or "Assets", for the
+## other layout kind_of already understands).
+## Some exports wrap that folder in one or more vendor-style folders that hold
+## nothing but it ("BefourStudios/RetroHouse/Materials"), so this starts at the
+## top and keeps stepping into a lone subfolder as long as stepping in still
+## leaves something to unwrap; it stops at the first folder that either branches
+## (more than one subfolder, "Med_Village/{Assets,Foliage,Maps}") or whose only
+## child is itself one of those generic content names.
+## path is relative to the pack root, or a res:// path from inside the pack.
+static func content_root_tag(path: String, pack_root: String) -> String:
+	var segments := path.trim_prefix("res://").split("/", false)
+	# A stray mesh can sit right at the pack root with no folder at all
+	# ("res://SM_Cable03_Splines_0.glb"); segments[0] would then be the
+	# filename itself, not a folder, and DirAccess on a file just answers
+	# "no subfolders" the same as an empty one, so nothing downstream would
+	# catch the mistake.
+	if segments.size() < 2:
+		return ""
+
+	var candidate := segments[0]
+	if SKIPPED_DIRS.has(candidate) or candidate == "Prefabs" or candidate == "Images":
+		return ""
+
+	var current_dir := pack_root.path_join(candidate)
+	while true:
+		var subdirs := _subdirs(current_dir)
+		if subdirs.size() != 1:
+			break
+		var only_child: String = subdirs[0]
+		if GENERIC_CONTENT_FOLDERS.has(only_child.to_lower()):
+			break
+		candidate = only_child
+		current_dir = current_dir.path_join(only_child)
+
+	return candidate.strip_edges().to_lower().replace(" ", "_")
 
 ## A prefab is its model plus collision, so it takes the model's folder tag.
 static func prefab_mesh_path(prefab_path: String) -> String:
