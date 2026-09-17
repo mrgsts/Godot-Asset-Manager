@@ -50,6 +50,7 @@ func _ready() -> void:
 	_progress_dialog = PROGRESS_DIALOG_SCENE.instantiate()
 	add_child(_progress_dialog)
 
+	_sidebar.settings = _settings
 	_sidebar.filter_changed.connect(_on_filter_changed)
 	_sidebar.open_folder_requested.connect(func(path: String) -> void: OS.shell_open(path))
 	_sidebar.add_requested.connect(_on_add_pressed)

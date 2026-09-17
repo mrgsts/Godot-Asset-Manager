@@ -16,6 +16,7 @@ const COL_NAME: int = 0
 const COL_COUNT: int = 1
 
 var database: AssetDatabase
+var settings: SettingsManager
 var workspace_path: String = ""
 
 var active_folder_prefix: String = ""
@@ -225,10 +226,25 @@ func _build_tags(root: TreeItem, counts: Dictionary) -> void:
 	if names.is_empty():
 		return
 
-	names.sort_custom(func(a: String, b: String) -> bool: return counts[a] > counts[b])
+	var alphabetical := settings != null and settings.get_tags_alphabetical()
+	# Natural order, so "oak_2" sorts before "oak_10". Ties in use fall back to
+	# it too, so the list doesn't reshuffle between refreshes.
+	names.sort_custom(func(a: String, b: String) -> bool:
+		if not alphabetical and counts[a] != counts[b]:
+			return counts[a] > counts[b]
+		return a.naturalnocasecmp_to(b) < 0
+	)
 	active_tags = active_tags.filter(func(tag: String) -> bool: return counts.has(tag))
 
 	var section := _make_section(root, "tags", "Tags", "FileList")
+
+	# Names the order it switches to, the same way "Show more" names its action.
+	var sort := _tree.create_item(section)
+	sort.set_text(COL_NAME, "Sort by use" if alphabetical else "Sort A–Z")
+	sort.set_icon(COL_NAME, _icon_for("Sort"))
+	sort.set_icon_modulate(COL_NAME, _muted_colour())
+	sort.set_metadata(COL_NAME, {"type": "tags_sort"})
+	sort.set_custom_color(COL_NAME, _muted_colour())
 
 	var shown := names if _tags_expanded else names.slice(0, mini(TAG_LIMIT, names.size()))
 	for tag: String in shown:
@@ -324,6 +340,12 @@ func _on_item_selected() -> void:
 
 	if meta.get("type") == "tags_more":
 		_tags_expanded = not _tags_expanded
+		call_deferred("refresh")
+		return
+
+	if meta.get("type") == "tags_sort":
+		if settings != null:
+			settings.set_tags_alphabetical(not settings.get_tags_alphabetical())
 		call_deferred("refresh")
 		return
 

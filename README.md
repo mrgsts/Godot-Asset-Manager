@@ -34,6 +34,7 @@ Manage all your Godot assets in a single place, get previews and send files dire
 - Export destination per project/game
 - Grid & list toggable views
 - Right-click to send project assets to the library
+- Tag list sorted by use or alphabetically
 - **Unreal2Godot packs**: keep Unreal exports as they are in the library, browse
   their prefabs, meshes, materials and levels with previews, and send any of them
   into a project with everything it needs ([details](#unreal2godot-packs))

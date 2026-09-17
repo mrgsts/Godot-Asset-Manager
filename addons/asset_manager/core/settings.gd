@@ -20,6 +20,7 @@ const KEY_VENDORS: String = "vendors"
 const KEY_VENDOR_BY_TYPE: String = "vendor_by_type"
 const KEY_SIDEBAR_WIDTH: String = "sidebar_width"
 const KEY_PREVIEW_WIDTH: String = "preview_width"
+const KEY_TAGS_ALPHABETICAL: String = "tags_alphabetical"
 
 const DEFAULT_ITEMS_PER_PAGE: int = 100
 const DEFAULT_GRID_ICON_SIZE: int = 40
@@ -144,3 +145,10 @@ func get_preview_width(fallback: int) -> int:
 
 func set_preview_width(value: int) -> void:
 	_set_pref(KEY_PREVIEW_WIDTH, value)
+
+## The sidebar's tag list, most used first unless switched to A-Z.
+func get_tags_alphabetical() -> bool:
+	return AssetManagerConfig.get_value(SECTION, KEY_TAGS_ALPHABETICAL, false)
+
+func set_tags_alphabetical(value: bool) -> void:
+	_set_pref(KEY_TAGS_ALPHABETICAL, value)
