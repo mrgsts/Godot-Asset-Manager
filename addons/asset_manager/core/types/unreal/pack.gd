@@ -109,7 +109,13 @@ static func preview_type(file_path: String) -> String:
 ## climbed past; "" when only those and the pack's own folder hold it.
 ## path is relative to the pack root, or a res:// path from inside the pack.
 static func mesh_folder_tag(path: String) -> String:
-	var segments := path.trim_prefix("res://").split("/")
+	# split(.., false) drops empty segments: the exporter sometimes writes
+	# "res:///Engine/..." (an extra slash), which trim_prefix leaves as a
+	# leading "/" and a plain split would keep as a leading "" segment,
+	# shifting every check below onto the wrong folder.
+	var segments := path.trim_prefix("res://").split("/", false)
+	if segments.is_empty():
+		return ""
 	# Engine stand-ins (the Plane prefab's BasicShapes/Plane.glb) say nothing
 	# about the pack's content.
 	if SKIPPED_DIRS.has(segments[0]):
@@ -146,7 +152,10 @@ static func texture_paths(file_path: String) -> PackedStringArray:
 		seen[current] = true
 
 		for raw_path in _ext_resource_paths(current):
-			var dep := pack_root.path_join(raw_path.trim_prefix("res://"))
+			# A stray "res:///..." (an extra slash) leaves a leading "/" after
+			# trim_prefix, which path_join would carry into the result as a
+			# double slash.
+			var dep := pack_root.path_join(raw_path.trim_prefix("res://").trim_prefix("/"))
 			var ext := dep.get_extension().to_lower()
 			if IMAGE_EXTENSIONS.has(ext):
 				if not found.has(dep):
