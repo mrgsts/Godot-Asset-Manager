@@ -76,19 +76,10 @@ static func _baked_paths_in(file_path: String) -> PackedStringArray:
 ## The pack is the folder holding everything this asset can reference, so
 ## baked res://<Root>/... paths resolve against it. dest_path mirrors the
 ## asset's path below the bucket, so both roots are the same walk: climb the
-## source until the parent is the bucket, and drop as many segments from the
-## destination.
+## source until the parent is the bucket (or a Godot project root is reached,
+## see PackPaths.find_pack_root), and drop as many segments from the destination.
 static func pack_root_for(source_path: String, bucket: String) -> String:
-	var dir := source_path.get_base_dir()
-	var found := ""
-	while dir != "" and dir != "/":
-		var parent := dir.get_base_dir()
-		if parent.get_file() == bucket:
-			found = dir
-		if parent == dir:
-			break
-		dir = parent
-	return found if not found.is_empty() else source_path.get_base_dir()
+	return PackPaths.find_pack_root(source_path.get_base_dir(), bucket)
 
 static func pack_dest_root_for(source_path: String, pack_root: String, dest_path: String) -> String:
 	var below := source_path.trim_prefix(pack_root).trim_prefix("/")
@@ -440,5 +431,5 @@ static func _read_script_res_paths_in(text: String) -> PackedStringArray:
 
 static func strip_uid_attribute(tag: String) -> String:
 	var uid_re := RegEx.new()
-	uid_re.compile('\\s*uid="[^"]*"')
+	uid_re.compile('\\s*uid\\s*=\\s*"[^"]*"')
 	return uid_re.sub(tag, "", true)

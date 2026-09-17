@@ -14,6 +14,7 @@ const HANDLERS: Dictionary = {
 	"shaders": preload("res://addons/asset_manager/core/types/shaders/export.gd"),
 	"effects": preload("res://addons/asset_manager/core/types/effects/export.gd"),
 	"scenes": preload("res://addons/asset_manager/core/types/scenes/export.gd"),
+	"unreal": preload("res://addons/asset_manager/core/types/unreal/export.gd"),
 }
 const DEFAULT_HANDLER := preload("res://addons/asset_manager/core/types/default/export.gd")
 

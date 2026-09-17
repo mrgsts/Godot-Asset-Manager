@@ -34,6 +34,40 @@ Manage all your Godot assets in a single place, get previews and send files dire
 - Export destination per project/game
 - Grid & list toggable views
 - Right-click to send project assets to the library
+- **Unreal2Godot packs**: keep Unreal exports as they are in the library, browse
+  their prefabs, meshes, materials and levels with previews, and send any of them
+  into a project with everything it needs ([details](#unreal2godot-packs))
+
+## Unreal2Godot packs
+
+Exports made with Unreal2Godot are kept in the library exactly as the exporter
+writes them, in the `unreal/` folder of the workspace:
+
+```
+<workspace>/unreal/<Pack>/            (optionally unreal/<Vendor>/<Pack>/)
+    project.godot
+    Prefabs/  Shaders/  Engine/  L_Overview.tscn  WorldEnvironment.tscn
+    <Pack>/Meshes/  <Pack>/Materials/  <Pack>/Textures/
+```
+
+- Add one with **Add → unreal**, or drop the export folder (or a folder holding
+  several exports) onto the Asset Manager tab. The `.godot` cache is left out;
+  the `.import` files are kept.
+- Prefabs, meshes, materials and levels are listed, filterable by kind, and
+  recognised by what they are rather than where they sit, whatever content
+  tree the Unreal project used (`Meshes/Props`, `Mesh/CaveModules`,
+  `Assets/Candle/Static_Mesh`...).
+- Tags come from the vendor and pack folder names, plus, for meshes and the
+  prefabs built on them, the folder holding the model (`props`, `candle`),
+  skipping generic ones like `Meshes` or `Static_Mesh`. Rebuild keeps these up
+  to date without touching tags added or removed by hand.
+- **Send to Project** copies the asset and everything it uses to
+  `res://assets/unreal/<Pack>/`, keeping the export's layout below it. Packs stay
+  apart because every export has its own `Prefabs/`, `Shaders/` and `Engine/`,
+  often with different files under the same names. References are repointed,
+  uids renewed (the exporter repeats them across packs) and import settings kept.
+- Large textures are shrunk once for previews and thumbnails, in the per-machine
+  cache folder (`AssetManager/preview_textures`).
 
 ## Requirements:
 

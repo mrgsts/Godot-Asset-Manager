@@ -102,6 +102,25 @@ const ALL: Array[Dictionary] = [
 		"default_export_path": "res://assets/scenes"
 	},
 	{
+		# Unreal2Godot exports, each kept as the Godot project the exporter wrote
+		# (see UnrealPack). No extensions: the runner decides what counts.
+		"id": "unreal",
+		"label": "Unreal Packs",
+		"extensions": [],
+		"default_icon": "PackedScene",
+		"default_export_path": "res://assets/unreal",
+		"runners": ["unreal"],
+		"subtypes": {
+			"label": "Kinds",
+			"options": {
+				"prefab": "Prefabs",
+				"mesh": "Meshes",
+				"material": "Materials",
+				"level": "Levels"
+			}
+		}
+	},
+	{
 		"id": "other",
 		"label": "Other",
 		"extensions": [""],

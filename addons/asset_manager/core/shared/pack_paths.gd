@@ -8,6 +8,8 @@ extends RefCounted
 ## Guard against a shader include cycle, which would otherwise recurse forever.
 const MAX_INCLUDE_DEPTH: int = 8
 
+const PROJECT_FILE: String = "project.godot"
+
 ## A pack is whatever folder sits directly inside the bucket, so the walk climbs
 ## until the parent is the bucket itself rather than sniffing for a subfolder
 ## name a pack may not use.
@@ -24,11 +26,35 @@ static func find_pack_root(start_dir: String, bucket: String) -> String:
 		if parent == dir:
 			break
 		dir = parent
-	return found if not found.is_empty() else start_dir
+	if found.is_empty():
+		return start_dir
+	return _nearest_project_root(start_dir, found)
+
+## A Godot project inside the pack (an Unreal2Godot export is one) is where its
+## res:// paths begin, so it beats the folder the bucket layout implies: packs
+## under a vendor folder, or several exports side by side, would otherwise share
+## one root and their same-named files would resolve to each other.
+## Never climbs above the bucket-level folder, a workspace kept inside some
+## project must not pick up that project's root.
+static func _nearest_project_root(start_dir: String, limit: String) -> String:
+	var dir := start_dir
+	while dir.begins_with(limit):
+		if FileAccess.file_exists(dir.path_join(PROJECT_FILE)):
+			return dir
+		if dir == limit:
+			break
+		dir = dir.get_base_dir()
+	return limit
 
 static func resolve_pack_path(raw_path: String, base_dir: String, pack_root: String) -> String:
 	if not raw_path.begins_with("res://"):
 		return base_dir.path_join(raw_path)
+
+	# A project root is res:// itself, the path means exactly what it says.
+	if FileAccess.file_exists(pack_root.path_join(PROJECT_FILE)):
+		var direct := pack_root.path_join(raw_path.trim_prefix("res://"))
+		if FileAccess.file_exists(direct):
+			return direct
 
 	# The baked path starts with however many folders the author's project had
 	# above the file, which we can't know. Joining what is left onto pack_root

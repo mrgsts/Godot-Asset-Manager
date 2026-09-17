@@ -26,6 +26,7 @@ const RENDERERS: Dictionary = {
 	"sounds": preload("res://addons/asset_manager/core/types/audio/thumb.gd"),
 	"music": preload("res://addons/asset_manager/core/types/audio/thumb.gd"),
 	"videos": preload("res://addons/asset_manager/core/types/videos/thumb.gd"),
+	"unreal": preload("res://addons/asset_manager/core/types/unreal/thumb.gd"),
 }
 
 ## Renderers that detect a subtype park it per path while they work. The mode

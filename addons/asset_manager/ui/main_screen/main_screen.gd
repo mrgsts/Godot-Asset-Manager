@@ -188,6 +188,10 @@ func _on_add_pressed(type_id: String) -> void:
 	if current_workspace_path.is_empty():
 		return
 
+	if type_id == UnrealPack.BUCKET:
+		_unreal_pack_dialog().popup_centered_ratio(0.7)
+		return
+
 	_add_type_id = type_id
 	var entry := AssetTypes.get_by_id(type_id)
 	var extensions: Array = entry.get("extensions", [])
@@ -215,6 +219,10 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 		return
 
 	var path := files[0]
+	if DirAccess.dir_exists_absolute(path):
+		_add_unreal_packs(path)
+		return
+
 	var candidates := AssetAdd.candidate_types(path)
 
 	if candidates.is_empty():
@@ -280,6 +288,58 @@ func _on_add_confirmed(type_id: String, source_path: String, format: String, var
 		push_error("AssetManager: ", error_message)
 
 	print("AssetManager: added %d file(s) to %s" % [result["copied_count"], dest_root])
+
+	_progress_dialog.finish()
+	if result["copied_count"] > 0:
+		await _on_rebuild_pressed()
+
+var _unreal_dialog: FileDialog
+
+func _unreal_pack_dialog() -> FileDialog:
+	if _unreal_dialog == null:
+		_unreal_dialog = FileDialog.new()
+		_unreal_dialog.title = "Add Unreal2Godot export (a pack, or a folder of them)"
+		_unreal_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+		_unreal_dialog.access = FileDialog.ACCESS_FILESYSTEM
+		_unreal_dialog.dir_selected.connect(_add_unreal_packs)
+		add_child(_unreal_dialog)
+	return _unreal_dialog
+
+## An Unreal2Godot export is a whole Godot project and arrives as a folder, one
+## pack or a folder holding several. Each is copied into unreal/ as it is, since
+## its res:// paths only hold inside its own tree. Files already there are left
+## alone, so adding a pack again only brings what is new.
+func _add_unreal_packs(folder: String) -> void:
+	var roots := UnrealPack.find_pack_roots(folder, 1)
+	if roots.is_empty():
+		push_warning("AssetManager: no Unreal2Godot export (project.godot with Prefabs/ and Shaders/) in " + folder)
+		return
+
+	_progress_dialog.start()
+	var result := AssetExporter.new_result()
+	var bucket_root := current_workspace_path.path_join(UnrealPack.BUCKET)
+
+	for pack_root in roots:
+		var dest_root := bucket_root.path_join(pack_root.get_file())
+		var files := UnrealPack.list_files(pack_root)
+		for i in files.size():
+			AssetExporter.copy_one_file(pack_root.path_join(files[i]), dest_root.path_join(files[i]), result)
+			# Thousands of files, many of them 4K textures: the editor has to keep
+			# painting while they go.
+			if i % 20 == 0:
+				_progress_dialog.on_progress({
+					"stage": "scan",
+					"type": pack_root.get_file(),
+					"label": files[i].get_file(),
+					"current": i,
+					"total": files.size(),
+				})
+				await get_tree().process_frame
+
+	for error_message in result["errors"]:
+		push_error("AssetManager: ", error_message)
+	print("AssetManager: added %d pack(s) to %s, %d file(s) copied, %d already present"
+		% [roots.size(), bucket_root, result["copied_count"], result["skipped_existing_count"]])
 
 	_progress_dialog.finish()
 	if result["copied_count"] > 0:

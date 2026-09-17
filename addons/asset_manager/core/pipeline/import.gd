@@ -21,6 +21,7 @@ func _init() -> void:
 	_runner_registry = {
 		"default": DefaultImportRunner,
 		"materials": MaterialsImportRunner,
+		"unreal": UnrealImportRunner,
 	}
 
 ## viewport_host is any node in the tree, 3D thumbnails parent an offscreen

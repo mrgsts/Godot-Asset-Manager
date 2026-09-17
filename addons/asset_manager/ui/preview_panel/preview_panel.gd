@@ -178,11 +178,13 @@ func show_asset(path: String, type_id: String) -> void:
 
 	_name_label.text = path.get_file()
 	_detail_label.text = _describe(path, type_id)
-	_current_type = type_id
+	# A pack holds several kinds of file, each shown by the preview built for
+	# that kind; the type entry still goes along so paths resolve in the pack.
+	_current_type = UnrealPack.preview_type(path) if type_id == UnrealPack.BUCKET else type_id
 
 	TscnSceneLoader.scripts_skipped = false
 
-	var body: Control = _bodies.get(type_id, _bodies["other"])
+	var body: Control = _bodies.get(_current_type, _bodies["other"])
 	body.show_asset(path, AssetTypes.get_by_id(type_id))
 	_static_preview_badge.visible = TscnSceneLoader.scripts_skipped
 
