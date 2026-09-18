@@ -306,10 +306,18 @@ func _unreal_pack_dialog() -> FileDialog:
 		add_child(_unreal_dialog)
 	return _unreal_dialog
 
-## An Unreal2Godot export is a whole Godot project and arrives as a folder, one
-## pack or a folder holding several. Each is copied into unreal/ as it is, since
-## its res:// paths only hold inside its own tree. Files already there are left
-## alone, so adding a pack again only brings what is new.
+## An Unreal2Godot export is a whole Godot project and can be tens of
+## gigabytes, so it is never copied. Instead it stays exactly where it is and
+## a symlink goes into unreal/ pointing at it - the catalog then scans through
+## that link exactly as if the files were really there, at effectively zero
+## extra disk space. "Send to Project" (types/unreal/export.gd) is unrelated
+## and keeps copying the specific files a user actually picks, same as
+## before; only this cataloging step changes. A pack already linked (or a
+## same-named folder already present) is left alone, so adding a pack again
+## only links what is new.
+## On Windows, creating a symlink can require Developer Mode or an elevated
+## prompt (a DirAccess/OS limitation, not this addon's); a failure there
+## surfaces as an error below rather than silently falling back to a copy.
 func _add_unreal_packs(folder: String) -> void:
 	var roots := UnrealPack.find_pack_roots(folder, 1)
 	if roots.is_empty():
@@ -317,33 +325,44 @@ func _add_unreal_packs(folder: String) -> void:
 		return
 
 	_progress_dialog.start()
-	var result := AssetExporter.new_result()
 	var bucket_root := current_workspace_path.path_join(UnrealPack.BUCKET)
+	if not DirAccess.dir_exists_absolute(bucket_root):
+		DirAccess.make_dir_recursive_absolute(bucket_root)
+	var dir := DirAccess.open(bucket_root)
 
-	for pack_root in roots:
+	var linked := 0
+	var already_present := 0
+	var errors: Array[String] = []
+
+	for i in roots.size():
+		var pack_root: String = roots[i]
+		_progress_dialog.on_progress({
+			"stage": "scan",
+			"type": pack_root.get_file(),
+			"label": pack_root.get_file(),
+			"current": i,
+			"total": roots.size(),
+		})
+		await get_tree().process_frame
+
 		var dest_root := bucket_root.path_join(pack_root.get_file())
-		var files := UnrealPack.list_files(pack_root)
-		for i in files.size():
-			AssetExporter.copy_one_file(pack_root.path_join(files[i]), dest_root.path_join(files[i]), result)
-			# Thousands of files, many of them 4K textures: the editor has to keep
-			# painting while they go.
-			if i % 20 == 0:
-				_progress_dialog.on_progress({
-					"stage": "scan",
-					"type": pack_root.get_file(),
-					"label": files[i].get_file(),
-					"current": i,
-					"total": files.size(),
-				})
-				await get_tree().process_frame
+		if DirAccess.dir_exists_absolute(dest_root) or FileAccess.file_exists(dest_root):
+			already_present += 1
+			continue
 
-	for error_message in result["errors"]:
+		var err := dir.create_link(pack_root, dest_root)
+		if err == OK:
+			linked += 1
+		else:
+			errors.append("Failed to link (%s): %s" % [error_string(err), pack_root])
+
+	for error_message in errors:
 		push_error("AssetManager: ", error_message)
-	print("AssetManager: added %d pack(s) to %s, %d file(s) copied, %d already present"
-		% [roots.size(), bucket_root, result["copied_count"], result["skipped_existing_count"]])
+	print("AssetManager: added %d pack(s) to %s, %d linked, %d already present"
+		% [roots.size(), bucket_root, linked, already_present])
 
 	_progress_dialog.finish()
-	if result["copied_count"] > 0:
+	if linked > 0:
 		await _on_rebuild_pressed()
 
 func _on_add_tag_requested(tag_text: String) -> void:
