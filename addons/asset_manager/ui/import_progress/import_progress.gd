@@ -25,6 +25,9 @@ const STAGES: Array[Dictionary] = [
 @onready var _detail_bar: ProgressBar = $Margin/VBox/DetailBar
 
 var _started_ms: int = 0
+## A thumbnails-only run has no scan or index stage before it, so the overall
+## bar spans just the thumbnails instead of starting a third of the way in.
+var _thumbnails_only: bool = false
 var _current_stage: String = ""
 var _current_type: String = ""
 var _ticker: Timer
@@ -43,7 +46,9 @@ func _ready() -> void:
 	_ticker.timeout.connect(_update_elapsed)
 	add_child(_ticker)
 
-func start() -> void:
+func start(p_title: String = "Rebuilding Index", p_thumbnails_only: bool = false) -> void:
+	title = p_title
+	_thumbnails_only = p_thumbnails_only
 	_started_ms = Time.get_ticks_msec()
 	_current_stage = ""
 	_current_type = ""
@@ -112,6 +117,8 @@ func on_progress(info: Dictionary) -> void:
 ## Weighted so the bar tracks real time rather than jumping to 90% and sitting
 ## there through the one stage that actually takes a while.
 func _overall_fraction(stage_id: String, stage_fraction: float) -> float:
+	if _thumbnails_only:
+		return stage_fraction
 	var total_weight: float = 0.0
 	for stage in STAGES:
 		total_weight += float(stage["weight"])

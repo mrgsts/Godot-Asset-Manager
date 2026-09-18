@@ -43,6 +43,10 @@ func take_subtypes() -> Dictionary:
 signal progress(info: Dictionary)
 
 var _cache: ThumbnailCache
+## Re-render everything even where a thumbnail is already cached. The cache key
+## is the asset file's own path + mtime + size, so it can't notice a change to
+## something the asset only references (a shader, a material, a texture).
+var force: bool = false
 ## Viewport captures need a node already in the tree to parent to.
 var _host: Node = null
 var _counter_mutex: Mutex = Mutex.new()
@@ -100,7 +104,7 @@ func _collect_pending(assets: Array[Dictionary]) -> Array[Dictionary]:
 			continue
 
 		var path: String = entry["path"]
-		if _cache.has_current_thumbnail(path, type_id):
+		if not force and _cache.has_current_thumbnail(path, type_id):
 			_skipped += 1
 			continue
 

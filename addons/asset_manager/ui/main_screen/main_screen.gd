@@ -69,6 +69,7 @@ func _ready() -> void:
 
 	toolbar.search_changed.connect(func(_text: String) -> void: _on_filter_changed())
 	toolbar.rebuild_pressed.connect(_on_rebuild_pressed)
+	toolbar.rebuild_thumbnails_pressed.connect(_on_rebuild_thumbnails_pressed)
 	toolbar.add_pressed.connect(_on_add_pressed)
 	toolbar.settings_pressed.connect(func() -> void: project_settings_dialog.open())
 	project_settings_dialog.switch_workspace_requested.connect(_on_switch_workspace)
@@ -180,6 +181,59 @@ func _on_rebuild_pressed() -> void:
 		_refresh_all_after_index_change()
 	else:
 		push_error("AssetManager: failed to write index.db")
+
+var _thumbnails_confirm: ConfirmationDialog
+## Fixed when the button is pressed, so changing a filter while the confirm
+## dialog is open can't change what gets regenerated.
+var _thumbnail_scope: Array[Dictionary] = []
+
+## Scope is whatever the grid is showing: the assets the active filters match,
+## which with no filter is everything. Asks first, since each one is rendered
+## again and on a big library (thousands of Unreal prefabs) that is the slowest
+## thing this panel does.
+func _on_rebuild_thumbnails_pressed() -> void:
+	if current_workspace_path.is_empty():
+		return
+
+	sync_if_stale()
+	var entries := _grid.matching_assets()
+	if entries.is_empty():
+		return
+	_thumbnail_scope = entries
+
+	if _thumbnails_confirm == null:
+		_thumbnails_confirm = ConfirmationDialog.new()
+		_thumbnails_confirm.title = "Regenerate Thumbnails"
+		_thumbnails_confirm.ok_button_text = "Regenerate"
+		_thumbnails_confirm.confirmed.connect(_regenerate_thumbnails)
+		add_child(_thumbnails_confirm)
+
+	var what := "all %d assets" % entries.size()
+	if entries.size() < _database.assets.size():
+		what = "the %d assets matching the current filters" % entries.size()
+	_thumbnails_confirm.dialog_text = "Regenerate the thumbnails of %s?\nEvery one is rendered again, which can take a while on a large library." % what
+	_thumbnails_confirm.popup_centered()
+
+## Thumbnails only, the index is not rescanned. The cache key can't see a change
+## to something an asset merely references (a shader, a material), so this is
+## how a fixed shader gets its assets re-rendered.
+func _regenerate_thumbnails() -> void:
+	toolbar.set_rebuilding(true)
+
+	var importer := AssetImporter.new()
+	importer.progress.connect(_progress_dialog.on_progress)
+	_progress_dialog.start("Regenerating Thumbnails", true)
+
+	var started := Time.get_ticks_msec()
+	await importer.regenerate_thumbnails(current_workspace_path, _database, _thumbnail_scope, self)
+	var elapsed := (Time.get_ticks_msec() - started) / 1000.0
+
+	_progress_dialog.finish()
+	toolbar.set_rebuilding(false)
+
+	print("AssetManager: regenerated thumbnails for %d assets in %.1fs" % [_thumbnail_scope.size(), elapsed])
+	_thumbnail_scope = []
+	_refresh_all_after_index_change()
 
 ## A zip or a single file of the chosen type. The type is picked before the file
 ## so an extension shared by two buckets (.ogg, .tscn) never has to be guessed.

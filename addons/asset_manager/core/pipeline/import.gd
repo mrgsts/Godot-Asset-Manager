@@ -67,6 +67,21 @@ func run_import(workspace_path: String, database: AssetDatabase, viewport_host: 
 
 	return true
 
+## Thumbnails only: renders the given assets again and leaves the index alone
+## apart from the subtypes the renderers report. For when something an asset
+## depends on changed without the asset file itself changing. `entries` is
+## {path, type, tags} like a scan result, so the caller picks the scope.
+func regenerate_thumbnails(workspace_path: String, database: AssetDatabase, entries: Array[Dictionary], viewport_host: Node = null) -> void:
+	var cache := ThumbnailCache.new()
+	cache.setup(workspace_path)
+	var stage := ThumbnailStage.new()
+	stage.setup(cache, viewport_host)
+	stage.force = true
+	stage.progress.connect(func(info: Dictionary) -> void: progress.emit(info))
+	await stage.run(entries)
+
+	database.update_subtypes(stage.take_subtypes())
+
 static func _drop_rare_tags(entries: Array[Dictionary]) -> void:
 	var counts: Dictionary = {}
 	for entry in entries:
