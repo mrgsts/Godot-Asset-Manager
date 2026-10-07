@@ -35,9 +35,34 @@ Manage all your Godot assets in a single place, get previews and send files dire
 - Grid & list toggable views
 - Right-click to send project assets to the library
 - Tag list sorted by use or alphabetically
+- **Linked folders**: catalog a folder of assets where it already is, without
+  copying it into the library ([details](#linked-folders))
 - **Unreal2Godot packs**: keep Unreal exports as they are in the library, browse
   their prefabs, meshes, materials and levels with previews, and send any of them
   into a project with everything it needs ([details](#unreal2godot-packs))
+
+## Linked folders
+
+A folder can join the library without being copied: choose it with
+**Add → Folder (link)…** or drop it onto the Asset Manager tab. It goes into
+the bucket its files fit (you're asked which when they fit several, e.g.
+models or images; an Unreal2Godot export goes to `unreal/`). A link named
+after it goes into that bucket and the library reads the folder through it,
+recursively and tagged by its subfolders like anything else; the files never
+move. You pick the link's name, which becomes the first
+tag of everything inside; a generic folder name (`3D`, `Assets`...) suggests
+the folder above instead (`CraftPix/3D` links as `CraftPix`). **Send to
+Project** still copies what you send, so projects never depend on the link.
+
+In `models/`, linked or not:
+
+- A `.fbx` with a `.glb`/`.gltf` of the same name beside it is listed only as
+  the converted file.
+- Folders made for Unity (`Rig_unity`, `RIG_FULL_UNITY`...) are skipped; the
+  Unreal-rigged copy of the same models is kept.
+- Storefront words are dropped from folder tags (`Battle Tower 3D Low Poly
+  Pack` tags `battle_tower`), and variant folders become plain tags
+  (`RIG_PARTS_UNREAL` tags `rig` and `parts`).
 
 ## Unreal2Godot packs
 

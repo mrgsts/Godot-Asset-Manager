@@ -247,6 +247,10 @@ func _on_add_pressed(type_id: String) -> void:
 		_unreal_pack_dialog().popup_centered_ratio(0.7)
 		return
 
+	if type_id == TypeMenu.FOLDER_ID:
+		_link_folder_dialog().popup_centered_ratio(0.7)
+		return
+
 	_add_type_id = type_id
 	var entry := AssetTypes.get_by_id(type_id)
 	var extensions: Array = entry.get("extensions", [])
@@ -275,7 +279,7 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 
 	var path := files[0]
 	if DirAccess.dir_exists_absolute(path):
-		_add_unreal_packs(path)
+		_add_folder(path)
 		return
 
 	var candidates := AssetAdd.candidate_types(path)
@@ -285,17 +289,24 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 		return
 
 	if candidates.size() == 1:
-		_add_type_id = candidates[0]
-		add_dialog.ask(candidates[0], path, current_workspace_path)
+		_add_dropped(candidates[0], path)
 		return
 
 	_ask_dropped_type(path, candidates)
+
+## A folder is linked, a file or zip goes through the add dialog.
+func _add_dropped(type_id: String, path: String) -> void:
+	_add_type_id = type_id
+	if DirAccess.dir_exists_absolute(path):
+		_ask_link_name(type_id, path)
+	else:
+		add_dialog.ask(type_id, path, current_workspace_path)
 
 ## Only the buckets that could claim this file, so the choice is as short as the
 ## file allows: two for a shared extension, more for a mixed archive.
 func _ask_dropped_type(path: String, candidates: PackedStringArray) -> void:
 	drop_type_menu.clear()
-	drop_type_menu.add_item("Add as…", -1)
+	drop_type_menu.add_item("Link into…" if DirAccess.dir_exists_absolute(path) else "Add as…", -1)
 	drop_type_menu.set_item_disabled(0, true)
 	drop_type_menu.add_separator()
 
@@ -320,8 +331,7 @@ func _ask_dropped_type(path: String, candidates: PackedStringArray) -> void:
 func _on_dropped_type_chosen(id: int, path: String, candidates: PackedStringArray) -> void:
 	if id < 0 or id >= candidates.size():
 		return
-	_add_type_id = candidates[id]
-	add_dialog.ask(candidates[id], path, current_workspace_path)
+	_add_dropped(candidates[id], path)
 
 ## Files land first, then a rebuild indexes them. Nothing already in the index
 ## is re-thumbnailed, so only what just arrived costs anything.
@@ -347,6 +357,104 @@ func _on_add_confirmed(type_id: String, source_path: String, format: String, var
 	_progress_dialog.finish()
 	if result["copied_count"] > 0:
 		await _on_rebuild_pressed()
+
+var _folder_dialog: FileDialog
+
+func _link_folder_dialog() -> FileDialog:
+	if _folder_dialog == null:
+		_folder_dialog = FileDialog.new()
+		_folder_dialog.title = "Link a folder (read in place, never copied)"
+		_folder_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+		_folder_dialog.access = FileDialog.ACCESS_FILESYSTEM
+		_folder_dialog.dir_selected.connect(_add_folder)
+		add_child(_folder_dialog)
+	return _folder_dialog
+
+## A folder from Add > Folder or a drop: an Unreal2Godot export goes to
+## unreal/, anything else is linked into the bucket its files fit, asking
+## which when they fit more than one.
+func _add_folder(path: String) -> void:
+	if not UnrealPack.find_pack_roots(path, 1).is_empty():
+		_add_unreal_packs(path)
+		return
+
+	var candidates := AssetLink.candidate_types(path)
+	if candidates.is_empty():
+		push_warning("AssetManager: nothing the library handles in " + path)
+	elif candidates.size() == 1:
+		_add_dropped(candidates[0], path)
+	else:
+		_ask_dropped_type(path, candidates)
+
+var _link_dialog: ConfirmationDialog
+var _link_name_edit: LineEdit
+var _link_info: Label
+var _link_problem: Label
+var _link_type_id: String = ""
+var _link_source: String = ""
+
+## A folder added to any bucket is linked, never copied (AssetLink), so the
+## only thing to ask is the name it goes by in the bucket, which is also the
+## first tag everything inside gets.
+func _ask_link_name(type_id: String, folder: String) -> void:
+	if current_workspace_path.is_empty() or type_id.is_empty():
+		return
+	if type_id == UnrealPack.BUCKET:
+		_add_unreal_packs(folder)
+		return
+
+	if _link_dialog == null:
+		_build_link_dialog()
+
+	_link_type_id = type_id
+	_link_source = folder.trim_suffix("/")
+	var label: String = AssetTypes.get_by_id(type_id).get("label", type_id)
+	_link_dialog.title = "Link folder into %s" % label
+	_link_info.text = "%s\nstays where it is; the library reads it through a link in %s/." % [_link_source, type_id]
+	_link_name_edit.text = AssetLink.suggest_name(_link_source)
+	_on_link_name_changed(_link_name_edit.text)
+	_link_dialog.popup_centered(Vector2i(560, 0))
+	_link_name_edit.grab_focus()
+	_link_name_edit.select_all()
+
+func _build_link_dialog() -> void:
+	_link_dialog = ConfirmationDialog.new()
+	_link_dialog.ok_button_text = "Link"
+	var box := VBoxContainer.new()
+	_link_info = Label.new()
+	_link_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(_link_info)
+	var name_label := Label.new()
+	name_label.text = "Name (also the first tag of everything inside):"
+	box.add_child(name_label)
+	_link_name_edit = LineEdit.new()
+	_link_name_edit.text_changed.connect(_on_link_name_changed)
+	box.add_child(_link_name_edit)
+	_link_dialog.register_text_enter(_link_name_edit)
+	_link_problem = Label.new()
+	_link_problem.add_theme_color_override("font_color", get_theme_color("error_color", "Editor"))
+	box.add_child(_link_problem)
+	_link_dialog.add_child(box)
+	_link_dialog.confirmed.connect(_on_link_confirmed)
+	add_child(_link_dialog)
+
+func _on_link_name_changed(text: String) -> void:
+	var bucket_root := current_workspace_path.path_join(_link_type_id)
+	var problem := AssetLink.validate_name(bucket_root, text.strip_edges())
+	_link_problem.text = problem
+	_link_problem.visible = not problem.is_empty()
+	_link_dialog.get_ok_button().disabled = not problem.is_empty()
+
+func _on_link_confirmed() -> void:
+	var bucket_root := current_workspace_path.path_join(_link_type_id)
+	var link_name := _link_name_edit.text.strip_edges()
+	var error_message := AssetLink.link(_link_source, bucket_root, link_name)
+	if not error_message.is_empty():
+		push_error("AssetManager: ", error_message)
+		return
+
+	print("AssetManager: linked %s as %s" % [_link_source, bucket_root.path_join(link_name)])
+	await _on_rebuild_pressed()
 
 var _unreal_dialog: FileDialog
 
