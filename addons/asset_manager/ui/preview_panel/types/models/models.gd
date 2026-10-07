@@ -146,7 +146,7 @@ func _center_and_scale(node: Node3D) -> void:
 	var first := true
 
 	for mi in meshes:
-		var mi_aabb := mi.get_aabb()
+		var mi_aabb := GltfSceneLoader.drawn_aabb(mi)
 		var xform := node.global_transform.affine_inverse() * mi.global_transform
 		var xformed_aabb := xform * mi_aabb
 

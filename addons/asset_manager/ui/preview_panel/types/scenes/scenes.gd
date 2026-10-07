@@ -62,10 +62,11 @@ func setup(p_settings: SettingsManager) -> void:
 	_settings = p_settings
 	set_grid_enabled(_settings.get_preview_grid_visible())
 
-func show_asset(path: String, _type_entry: Dictionary = {}) -> void:
+func show_asset(path: String, type_entry: Dictionary = {}) -> void:
 	visible = true
 
-	_loaded_node = TscnSceneLoader.load_external(path, "scenes")
+	# Unreal packs are shown here too, and their paths resolve in their own bucket.
+	_loaded_node = TscnSceneLoader.load_external(path, type_entry.get("id", "scenes"))
 	if _loaded_node == null:
 		return
 

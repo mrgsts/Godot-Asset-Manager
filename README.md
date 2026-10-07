@@ -34,6 +34,70 @@ Manage all your Godot assets in a single place, get previews and send files dire
 - Export destination per project/game
 - Grid & list toggable views
 - Right-click to send project assets to the library
+- Tag list sorted by use or alphabetically
+- **Linked folders**: catalog a folder of assets where it already is, without
+  copying it into the library ([details](#linked-folders))
+- **Unreal2Godot packs**: keep Unreal exports as they are in the library, browse
+  their prefabs, meshes, materials and levels with previews, and send any of them
+  into a project with everything it needs ([details](#unreal2godot-packs))
+
+## Linked folders
+
+A folder can join the library without being copied: choose it with
+**Add → Folder (link)…** or drop it onto the Asset Manager tab. It goes into
+the bucket its files fit (you're asked which when they fit several, e.g.
+models or images; an Unreal2Godot export goes to `unreal/`). A link named
+after it goes into that bucket and the library reads the folder through it,
+recursively and tagged by its subfolders like anything else; the files never
+move. You pick the link's name, which becomes the first
+tag of everything inside; a generic folder name (`3D`, `Assets`...) suggests
+the folder above instead (`CraftPix/3D` links as `CraftPix`). **Send to
+Project** still copies what you send, so projects never depend on the link.
+
+In `models/`, linked or not:
+
+- A `.fbx` with a `.glb`/`.gltf` of the same name beside it is listed only as
+  the converted file.
+- Folders made for Unity (`Rig_unity`, `RIG_FULL_UNITY`...) are skipped; the
+  Unreal-rigged copy of the same models is kept.
+- Storefront words are dropped from folder tags (`Battle Tower 3D Low Poly
+  Pack` tags `battle_tower`), and variant folders become plain tags
+  (`RIG_PARTS_UNREAL` tags `rig` and `parts`).
+
+## Unreal2Godot packs
+
+Exports made with Unreal2Godot are kept in the library exactly as the exporter
+writes them, in the `unreal/` folder of the workspace:
+
+```
+<workspace>/unreal/<Pack>/            (optionally unreal/<Vendor>/<Pack>/)
+    project.godot
+    Prefabs/  Shaders/  Engine/  L_Overview.tscn  WorldEnvironment.tscn
+    <Pack>/Meshes/  <Pack>/Materials/  <Pack>/Textures/
+```
+
+- Add one with **Add → unreal**, or drop the export folder (or a folder holding
+  several exports) onto the Asset Manager tab. The `.godot` cache is left out;
+  the `.import` files are kept.
+- Prefabs, meshes, materials and levels are listed, filterable by kind, and
+  recognised by what they are rather than where they sit, whatever content
+  tree the Unreal project used (`Meshes/Props`, `Mesh/CaveModules`,
+  `Assets/Candle/Static_Mesh`...).
+- Tags come from the vendor folder (if any) and from the Unreal project's own
+  content folder underneath the pack root, not the pack root's own name — that
+  is whatever the export was called, which for a fab.com listing can run to a
+  whole sentence. Vendor wrapper folders that hold nothing else are seen
+  through (`BefourStudios/RetroHouse` tags `retrohouse`). Meshes and the
+  prefabs built on them also get the folder holding the model (`props`,
+  `candle`), skipping generic ones like `Meshes` or `Static_Mesh`. Rebuild
+  keeps these up to date without touching tags added or removed by hand.
+- **Send to Project** copies the asset and everything it uses to
+  `res://assets/unreal/<Pack>/`, keeping the export's layout below it. Packs stay
+  apart because every export has its own `Prefabs/`, `Shaders/` and `Engine/`,
+  often with different files under the same names. References are repointed,
+  uids renewed (the exporter repeats them across packs) and import settings kept.
+- Large textures are shrunk once for previews and thumbnails, in the per-machine
+  cache folder (`AssetManager/preview_textures`).
 
 ## Requirements:
 

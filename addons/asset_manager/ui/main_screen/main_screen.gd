@@ -50,6 +50,7 @@ func _ready() -> void:
 	_progress_dialog = PROGRESS_DIALOG_SCENE.instantiate()
 	add_child(_progress_dialog)
 
+	_sidebar.settings = _settings
 	_sidebar.filter_changed.connect(_on_filter_changed)
 	_sidebar.open_folder_requested.connect(func(path: String) -> void: OS.shell_open(path))
 	_sidebar.add_requested.connect(_on_add_pressed)
@@ -68,6 +69,7 @@ func _ready() -> void:
 
 	toolbar.search_changed.connect(func(_text: String) -> void: _on_filter_changed())
 	toolbar.rebuild_pressed.connect(_on_rebuild_pressed)
+	toolbar.rebuild_thumbnails_pressed.connect(_on_rebuild_thumbnails_pressed)
 	toolbar.add_pressed.connect(_on_add_pressed)
 	toolbar.settings_pressed.connect(func() -> void: project_settings_dialog.open())
 	project_settings_dialog.switch_workspace_requested.connect(_on_switch_workspace)
@@ -180,12 +182,73 @@ func _on_rebuild_pressed() -> void:
 	else:
 		push_error("AssetManager: failed to write index.db")
 
+var _thumbnails_confirm: ConfirmationDialog
+## Fixed when the button is pressed, so changing a filter while the confirm
+## dialog is open can't change what gets regenerated.
+var _thumbnail_scope: Array[Dictionary] = []
+
+## Scope is whatever the grid is showing: the assets the active filters match,
+## which with no filter is everything. Asks first, since each one is rendered
+## again and on a big library (thousands of Unreal prefabs) that is the slowest
+## thing this panel does.
+func _on_rebuild_thumbnails_pressed() -> void:
+	if current_workspace_path.is_empty():
+		return
+
+	sync_if_stale()
+	var entries := _grid.matching_assets()
+	if entries.is_empty():
+		return
+	_thumbnail_scope = entries
+
+	if _thumbnails_confirm == null:
+		_thumbnails_confirm = ConfirmationDialog.new()
+		_thumbnails_confirm.title = "Regenerate Thumbnails"
+		_thumbnails_confirm.ok_button_text = "Regenerate"
+		_thumbnails_confirm.confirmed.connect(_regenerate_thumbnails)
+		add_child(_thumbnails_confirm)
+
+	var what := "all %d assets" % entries.size()
+	if entries.size() < _database.assets.size():
+		what = "the %d assets matching the current filters" % entries.size()
+	_thumbnails_confirm.dialog_text = "Regenerate the thumbnails of %s?\nEvery one is rendered again, which can take a while on a large library." % what
+	_thumbnails_confirm.popup_centered()
+
+## Thumbnails only, the index is not rescanned. The cache key can't see a change
+## to something an asset merely references (a shader, a material), so this is
+## how a fixed shader gets its assets re-rendered.
+func _regenerate_thumbnails() -> void:
+	toolbar.set_rebuilding(true)
+
+	var importer := AssetImporter.new()
+	importer.progress.connect(_progress_dialog.on_progress)
+	_progress_dialog.start("Regenerating Thumbnails", true)
+
+	var started := Time.get_ticks_msec()
+	await importer.regenerate_thumbnails(current_workspace_path, _database, _thumbnail_scope, self)
+	var elapsed := (Time.get_ticks_msec() - started) / 1000.0
+
+	_progress_dialog.finish()
+	toolbar.set_rebuilding(false)
+
+	print("AssetManager: regenerated thumbnails for %d assets in %.1fs" % [_thumbnail_scope.size(), elapsed])
+	_thumbnail_scope = []
+	_refresh_all_after_index_change()
+
 ## A zip or a single file of the chosen type. The type is picked before the file
 ## so an extension shared by two buckets (.ogg, .tscn) never has to be guessed.
 var _add_type_id: String = ""
 
 func _on_add_pressed(type_id: String) -> void:
 	if current_workspace_path.is_empty():
+		return
+
+	if type_id == UnrealPack.BUCKET:
+		_unreal_pack_dialog().popup_centered_ratio(0.7)
+		return
+
+	if type_id == TypeMenu.FOLDER_ID:
+		_link_folder_dialog().popup_centered_ratio(0.7)
 		return
 
 	_add_type_id = type_id
@@ -215,6 +278,10 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 		return
 
 	var path := files[0]
+	if DirAccess.dir_exists_absolute(path):
+		_add_folder(path)
+		return
+
 	var candidates := AssetAdd.candidate_types(path)
 
 	if candidates.is_empty():
@@ -222,17 +289,24 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 		return
 
 	if candidates.size() == 1:
-		_add_type_id = candidates[0]
-		add_dialog.ask(candidates[0], path, current_workspace_path)
+		_add_dropped(candidates[0], path)
 		return
 
 	_ask_dropped_type(path, candidates)
+
+## A folder is linked, a file or zip goes through the add dialog.
+func _add_dropped(type_id: String, path: String) -> void:
+	_add_type_id = type_id
+	if DirAccess.dir_exists_absolute(path):
+		_ask_link_name(type_id, path)
+	else:
+		add_dialog.ask(type_id, path, current_workspace_path)
 
 ## Only the buckets that could claim this file, so the choice is as short as the
 ## file allows: two for a shared extension, more for a mixed archive.
 func _ask_dropped_type(path: String, candidates: PackedStringArray) -> void:
 	drop_type_menu.clear()
-	drop_type_menu.add_item("Add as…", -1)
+	drop_type_menu.add_item("Link into…" if DirAccess.dir_exists_absolute(path) else "Add as…", -1)
 	drop_type_menu.set_item_disabled(0, true)
 	drop_type_menu.add_separator()
 
@@ -257,8 +331,7 @@ func _ask_dropped_type(path: String, candidates: PackedStringArray) -> void:
 func _on_dropped_type_chosen(id: int, path: String, candidates: PackedStringArray) -> void:
 	if id < 0 or id >= candidates.size():
 		return
-	_add_type_id = candidates[id]
-	add_dialog.ask(candidates[id], path, current_workspace_path)
+	_add_dropped(candidates[id], path)
 
 ## Files land first, then a rebuild indexes them. Nothing already in the index
 ## is re-thumbnailed, so only what just arrived costs anything.
@@ -283,6 +356,175 @@ func _on_add_confirmed(type_id: String, source_path: String, format: String, var
 
 	_progress_dialog.finish()
 	if result["copied_count"] > 0:
+		await _on_rebuild_pressed()
+
+var _folder_dialog: FileDialog
+
+func _link_folder_dialog() -> FileDialog:
+	if _folder_dialog == null:
+		_folder_dialog = FileDialog.new()
+		_folder_dialog.title = "Link a folder (read in place, never copied)"
+		_folder_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+		_folder_dialog.access = FileDialog.ACCESS_FILESYSTEM
+		_folder_dialog.dir_selected.connect(_add_folder)
+		add_child(_folder_dialog)
+	return _folder_dialog
+
+## A folder from Add > Folder or a drop: an Unreal2Godot export goes to
+## unreal/, anything else is linked into the bucket its files fit, asking
+## which when they fit more than one.
+func _add_folder(path: String) -> void:
+	if not UnrealPack.find_pack_roots(path, 1).is_empty():
+		_add_unreal_packs(path)
+		return
+
+	var candidates := AssetLink.candidate_types(path)
+	if candidates.is_empty():
+		push_warning("AssetManager: nothing the library handles in " + path)
+	elif candidates.size() == 1:
+		_add_dropped(candidates[0], path)
+	else:
+		_ask_dropped_type(path, candidates)
+
+var _link_dialog: ConfirmationDialog
+var _link_name_edit: LineEdit
+var _link_info: Label
+var _link_problem: Label
+var _link_type_id: String = ""
+var _link_source: String = ""
+
+## A folder added to any bucket is linked, never copied (AssetLink), so the
+## only thing to ask is the name it goes by in the bucket, which is also the
+## first tag everything inside gets.
+func _ask_link_name(type_id: String, folder: String) -> void:
+	if current_workspace_path.is_empty() or type_id.is_empty():
+		return
+	if type_id == UnrealPack.BUCKET:
+		_add_unreal_packs(folder)
+		return
+
+	if _link_dialog == null:
+		_build_link_dialog()
+
+	_link_type_id = type_id
+	_link_source = folder.trim_suffix("/")
+	var label: String = AssetTypes.get_by_id(type_id).get("label", type_id)
+	_link_dialog.title = "Link folder into %s" % label
+	_link_info.text = "%s\nstays where it is; the library reads it through a link in %s/." % [_link_source, type_id]
+	_link_name_edit.text = AssetLink.suggest_name(_link_source)
+	_on_link_name_changed(_link_name_edit.text)
+	_link_dialog.popup_centered(Vector2i(560, 0))
+	_link_name_edit.grab_focus()
+	_link_name_edit.select_all()
+
+func _build_link_dialog() -> void:
+	_link_dialog = ConfirmationDialog.new()
+	_link_dialog.ok_button_text = "Link"
+	var box := VBoxContainer.new()
+	_link_info = Label.new()
+	_link_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(_link_info)
+	var name_label := Label.new()
+	name_label.text = "Name (also the first tag of everything inside):"
+	box.add_child(name_label)
+	_link_name_edit = LineEdit.new()
+	_link_name_edit.text_changed.connect(_on_link_name_changed)
+	box.add_child(_link_name_edit)
+	_link_dialog.register_text_enter(_link_name_edit)
+	_link_problem = Label.new()
+	_link_problem.add_theme_color_override("font_color", get_theme_color("error_color", "Editor"))
+	box.add_child(_link_problem)
+	_link_dialog.add_child(box)
+	_link_dialog.confirmed.connect(_on_link_confirmed)
+	add_child(_link_dialog)
+
+func _on_link_name_changed(text: String) -> void:
+	var bucket_root := current_workspace_path.path_join(_link_type_id)
+	var problem := AssetLink.validate_name(bucket_root, text.strip_edges())
+	_link_problem.text = problem
+	_link_problem.visible = not problem.is_empty()
+	_link_dialog.get_ok_button().disabled = not problem.is_empty()
+
+func _on_link_confirmed() -> void:
+	var bucket_root := current_workspace_path.path_join(_link_type_id)
+	var link_name := _link_name_edit.text.strip_edges()
+	var error_message := AssetLink.link(_link_source, bucket_root, link_name)
+	if not error_message.is_empty():
+		push_error("AssetManager: ", error_message)
+		return
+
+	print("AssetManager: linked %s as %s" % [_link_source, bucket_root.path_join(link_name)])
+	await _on_rebuild_pressed()
+
+var _unreal_dialog: FileDialog
+
+func _unreal_pack_dialog() -> FileDialog:
+	if _unreal_dialog == null:
+		_unreal_dialog = FileDialog.new()
+		_unreal_dialog.title = "Add Unreal2Godot export (a pack, or a folder of them)"
+		_unreal_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+		_unreal_dialog.access = FileDialog.ACCESS_FILESYSTEM
+		_unreal_dialog.dir_selected.connect(_add_unreal_packs)
+		add_child(_unreal_dialog)
+	return _unreal_dialog
+
+## An Unreal2Godot export is a whole Godot project and can be tens of
+## gigabytes, so it is never copied. Instead it stays exactly where it is and
+## a symlink goes into unreal/ pointing at it - the catalog then scans through
+## that link exactly as if the files were really there, at effectively zero
+## extra disk space. "Send to Project" (types/unreal/export.gd) is unrelated
+## and keeps copying the specific files a user actually picks, same as
+## before; only this cataloging step changes. A pack already linked (or a
+## same-named folder already present) is left alone, so adding a pack again
+## only links what is new.
+## On Windows, creating a symlink can require Developer Mode or an elevated
+## prompt (a DirAccess/OS limitation, not this addon's); a failure there
+## surfaces as an error below rather than silently falling back to a copy.
+func _add_unreal_packs(folder: String) -> void:
+	var roots := UnrealPack.find_pack_roots(folder, 1)
+	if roots.is_empty():
+		push_warning("AssetManager: no Unreal2Godot export (project.godot with Prefabs/ and Shaders/) in " + folder)
+		return
+
+	_progress_dialog.start()
+	var bucket_root := current_workspace_path.path_join(UnrealPack.BUCKET)
+	if not DirAccess.dir_exists_absolute(bucket_root):
+		DirAccess.make_dir_recursive_absolute(bucket_root)
+	var dir := DirAccess.open(bucket_root)
+
+	var linked := 0
+	var already_present := 0
+	var errors: Array[String] = []
+
+	for i in roots.size():
+		var pack_root: String = roots[i]
+		_progress_dialog.on_progress({
+			"stage": "scan",
+			"type": pack_root.get_file(),
+			"label": pack_root.get_file(),
+			"current": i,
+			"total": roots.size(),
+		})
+		await get_tree().process_frame
+
+		var dest_root := bucket_root.path_join(pack_root.get_file())
+		if DirAccess.dir_exists_absolute(dest_root) or FileAccess.file_exists(dest_root):
+			already_present += 1
+			continue
+
+		var err := dir.create_link(pack_root, dest_root)
+		if err == OK:
+			linked += 1
+		else:
+			errors.append("Failed to link (%s): %s" % [error_string(err), pack_root])
+
+	for error_message in errors:
+		push_error("AssetManager: ", error_message)
+	print("AssetManager: added %d pack(s) to %s, %d linked, %d already present"
+		% [roots.size(), bucket_root, linked, already_present])
+
+	_progress_dialog.finish()
+	if linked > 0:
 		await _on_rebuild_pressed()
 
 func _on_add_tag_requested(tag_text: String) -> void:

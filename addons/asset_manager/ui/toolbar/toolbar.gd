@@ -6,6 +6,7 @@ extends MarginContainer
 ## decides what each one means.
 signal sidebar_toggled(collapsed: bool)
 signal rebuild_pressed
+signal rebuild_thumbnails_pressed
 signal add_pressed(type_id: String)
 signal search_changed(text: String)
 signal settings_pressed
@@ -13,6 +14,7 @@ signal settings_pressed
 @onready var _sidebar_btn: Button = $HBox/SidebarButton
 @onready var _add_btn: MenuButton = $HBox/AddButton
 @onready var _rebuild_btn: Button = $HBox/RebuildButton
+@onready var _thumbnails_btn: Button = $HBox/ThumbnailsButton
 @onready var _search_input: LineEdit = $HBox/SearchInput
 @onready var _settings_btn: Button = $HBox/SettingsButton
 
@@ -27,6 +29,7 @@ func _ready() -> void:
 
 	_sidebar_btn.pressed.connect(_on_sidebar_button_pressed)
 	_rebuild_btn.pressed.connect(func() -> void: rebuild_pressed.emit())
+	_thumbnails_btn.pressed.connect(func() -> void: rebuild_thumbnails_pressed.emit())
 	_search_input.text_changed.connect(func(text: String) -> void: search_changed.emit(text))
 	_settings_btn.pressed.connect(func() -> void: settings_pressed.emit())
 
@@ -59,6 +62,7 @@ func _apply_spacing() -> void:
 func _apply_icons() -> void:
 	_set_icon(_add_btn, "Add")
 	_set_icon(_rebuild_btn, "Reload")
+	_set_icon(_thumbnails_btn, "Image")
 	_set_icon(_settings_btn, "Tools")
 
 	# same treatment Godot gives its own filter fields (filesystem_dock.cpp:663)
@@ -88,6 +92,7 @@ func _update_sidebar_icon(collapsed: bool) -> void:
 ## looking unresponsive.
 func set_rebuilding(rebuilding: bool) -> void:
 	_rebuild_btn.disabled = rebuilding
+	_thumbnails_btn.disabled = rebuilding
 	_add_btn.disabled = rebuilding
 	_rebuild_btn.tooltip_text = "Rebuilding…" if rebuilding else "Rebuild Index"
 

@@ -61,8 +61,9 @@ func has_newer_version_on_disk() -> bool:
 	var disk_version: int = data.get("version", 0)
 	return disk_version > version
 
-## Existing entries are reused verbatim, only date_added is backfilled.
-## User-edited tags and type are preserved across rescans.
+## Existing entries are reused, only date_added is backfilled and the tags the
+## scan derives are brought up to date. User-edited tags and type are preserved
+## across rescans.
 func rebuild(scanned_assets: Array[Dictionary]) -> bool:
 	var new_assets: Dictionary = {}
 	var now := int(Time.get_unix_time_from_system())
@@ -73,13 +74,43 @@ func rebuild(scanned_assets: Array[Dictionary]) -> bool:
 			# Entries written before date_added existed backfill to now, once.
 			if not existing.has("date_added"):
 				existing["date_added"] = now
+			existing["tags"] = _merge_auto_tags(existing, entry["tags"])
+			existing["auto_tags"] = entry["tags"]
 			new_assets[path] = existing
 		else:
-			new_assets[path] = {"type": entry["type"], "tags": entry["tags"], "date_added": now}
+			new_assets[path] = {"type": entry["type"], "tags": entry["tags"], "auto_tags": entry["tags"], "date_added": now}
+
+		# A runner that knows the subtype from where the file sits (unreal packs)
+		# says so here; it describes the file, not a user edit, so it's refreshed.
+		if entry.has("subtype"):
+			new_assets[path]["subtype"] = entry["subtype"]
 
 	assets = new_assets
 	version += 1
 	return _write_to_disk()
+
+## auto_tags remembers what the last scan derived, which is what separates a
+## tag the scan should take back (its folder was renamed, the rule changed)
+## from one the user added. A tag the user removed by hand stays removed as long
+## as the scan still derives the same set. Entries indexed before auto_tags
+## existed can't tell the two apart, so they only gain tags, once.
+static func _merge_auto_tags(existing: Dictionary, scanned: Array) -> Array:
+	var tags: Array = existing.get("tags", []).duplicate()
+
+	if not existing.has("auto_tags"):
+		for tag in scanned:
+			if not tags.has(tag):
+				tags.append(tag)
+		return tags
+
+	var previous: Array = existing["auto_tags"]
+	for tag in previous:
+		if not scanned.has(tag):
+			tags.erase(tag)
+	for tag in scanned:
+		if not previous.has(tag) and not tags.has(tag):
+			tags.append(tag)
+	return tags
 
 func update_subtypes(collected: Dictionary) -> bool:
 	if collected.is_empty():

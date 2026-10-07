@@ -92,22 +92,32 @@ static func _load_external_inner(path: String, pack_root: String) -> Node:
 			# sub-scenes (showcase/demo scenes especially) are made almost
 			# entirely of these, and skipping them leaves an empty root.
 			var node: Node = null
+			var is_edit := false
 			if fields.has("instance"):
 				node = _instantiate_scene_ref(fields["instance"], ext_resources)
 			elif ClassDB.class_exists(type):
 				node = ClassDB.instantiate(type)
+			elif type.is_empty() and root != null:
+				# Neither type nor instance: the block edits a node an instanced
+				# scene already brought (an editable child), the way a prefab
+				# assigns materials to the mesh inside its model.
+				var owner_node := _find_node(root, node_by_path, parent_path)
+				node = owner_node.get_node_or_null(NodePath(name)) if owner_node != null else null
+				is_edit = node != null
 
 			if node == null:
 				i = _skip_block(lines, i + 1)
 				continue
-			node.name = name
 
 			if root == null:
+				node.name = name
 				root = node
 				node_by_path["."] = root
 			else:
-				var parent: Node = node_by_path.get(parent_path, root)
-				parent.add_child(node)
+				if not is_edit:
+					node.name = name
+					var parent: Node = _find_node(root, node_by_path, parent_path)
+					(parent if parent != null else root).add_child(node)
 				var full_path: String = name if parent_path == "." else parent_path + "/" + name
 				node_by_path[full_path] = node
 
@@ -116,6 +126,14 @@ static func _load_external_inner(path: String, pack_root: String) -> Node:
 		i += 1
 
 	return root
+
+## A parent named in the file, or one that only exists inside an instanced scene
+## (parent="Mesh" below an instanced model), which the file never declared.
+static func _find_node(root: Node, node_by_path: Dictionary, node_path: String) -> Node:
+	var known: Variant = node_by_path.get(node_path)
+	if known != null:
+		return known
+	return root.get_node_or_null(NodePath(node_path))
 
 static func _set_owner_recursive(node: Node, owner: Node) -> void:
 	for child in node.get_children():
@@ -142,8 +160,9 @@ static func _instantiate_scene_ref(raw_ref: String, ext_resources: Dictionary) -
 static func _parse_tag_fields(tag_line: String) -> Dictionary:
 	var fields: Dictionary = {}
 	var inner := tag_line.trim_prefix("[").trim_suffix("]")
+	# Spaces around "=" are legal, some exporters write [node name = "X" ...].
 	var regex := RegEx.new()
-	regex.compile('(\\w+)="([^"]*)"|(\\w+)=([^\\s\\]]+)')
+	regex.compile('(\\w+)\\s*=\\s*"([^"]*)"|(\\w+)\\s*=\\s*([^\\s\\]]+)')
 	for m in regex.search_all(inner):
 		if m.get_string(1) != "":
 			fields[m.get_string(1)] = m.get_string(2)
@@ -389,7 +408,10 @@ static func _load_ext_resource_inner(fields: Dictionary, base_dir: String, pack_
 					var loaded_tex := load(real_path)
 					return loaded_tex
 				return _load_resource_file(real_path, pack_root)
-			var img := Image.load_from_file(real_path)
+			# Only a pack's material maps can be shrunk: elsewhere a texture may
+			# be cut up by pixel regions (atlases, sprite regions, styleboxes).
+			var img := PreviewTextureCache.load_image(real_path) if UnrealPack.is_pack_root(pack_root) \
+				else Image.load_from_file(real_path)
 			return ImageTexture.create_from_image(img) if img else null
 		"Shader":
 			# A Shader ext_resource isn't always raw .gdshader source, a
@@ -405,6 +427,10 @@ static func _load_ext_resource_inner(fields: Dictionary, base_dir: String, pack_
 			push_warning("AssetManager: skipping script (not executed in preview): " + real_path)
 			return null
 		"PackedScene":
+			# A model instanced straight into a scene (a prefab wrapping its
+			# .glb) is a source file a project would import, not a .tscn.
+			if GltfSceneLoader.MODEL_EXTENSIONS.has(real_path.get_extension().to_lower()):
+				return _pack_model(real_path)
 			# load_external applies its own writes before returning, which matters
 			# here: this tree is packed and freed immediately, so anything left
 			# deferred would point at freed nodes, and pack() would capture the
@@ -450,8 +476,29 @@ static func _load_ext_resource_inner(fields: Dictionary, base_dir: String, pack_
 		"AudioStream":
 			return _load_audio_file(real_path)
 		_:
+			# Any other resource saved as text builds the same way, whatever it
+			# is (a level's CameraAttributesPractical, say).
+			if real_path.get_extension().to_lower() in TEXT_RESOURCE_EXTENSIONS \
+					and not BinaryResource.is_binary(real_path) \
+					and ClassDB.is_parent_class(type, "Resource"):
+				return _load_resource_file(real_path, pack_root)
 			push_warning("AssetManager: unsupported ext_resource type: " + type)
 			return null
+
+## Owners are set for the same reason as a nested .tscn: pack() drops any node
+## the root doesn't own, and the editable children a prefab reaches into
+## ("Mesh") have to survive it.
+static func _pack_model(real_path: String) -> PackedScene:
+	var model := GltfSceneLoader.load_external(real_path)
+	if model == null:
+		push_warning("AssetManager: could not load model: " + real_path)
+		return null
+
+	_set_owner_recursive(model, model)
+	var packed := PackedScene.new()
+	packed.pack(model)
+	model.free()
+	return packed
 
 ## Standalone text resource files ([gd_resource type="X"] header) share the same
 ## ext_resource/sub_resource grammar as .tscn, reuse the same block-walking
@@ -462,7 +509,7 @@ static func _load_resource_file(real_path: String, pack_root: String) -> Resourc
 		return null
 
 	var header_match := RegEx.new()
-	header_match.compile('type="([^"]+)"')
+	header_match.compile('\\btype\\s*=\\s*"([^"]+)"')
 	var m := header_match.search(text.split("\n")[0])
 	if not m:
 		push_warning("AssetManager: unrecognized resource header: " + real_path)
@@ -589,9 +636,38 @@ static func _apply_properties(lines: PackedStringArray, start_i: int, obj: Objec
 	return i
 
 static func _is_balanced(s: String) -> bool:
-	return s.count("[") == s.count("]") \
-		and s.count("(") == s.count(")") \
-		and s.count("{") == s.count("}")
+	# The native counts are the fast path for the megabyte-long vertex arrays,
+	# which never hold a string.
+	if not s.contains("\""):
+		return s.count("[") == s.count("]") \
+			and s.count("(") == s.count(")") \
+			and s.count("{") == s.count("}")
+	return _is_balanced_outside_strings(s)
+
+## A string value can span lines and carry " = " and brackets of its own, a
+## VisualShader expression node stores its whole GLSL body that way. Only what
+## sits outside quotes counts, and an open quote means the value goes on.
+static func _is_balanced_outside_strings(s: String) -> bool:
+	var depth := 0
+	var in_string := false
+	var escaped := false
+	for c in s:
+		if in_string:
+			if escaped:
+				escaped = false
+			elif c == "\\":
+				escaped = true
+			elif c == "\"":
+				in_string = false
+			continue
+		match c:
+			"\"":
+				in_string = true
+			"[", "(", "{":
+				depth += 1
+			"]", ")", "}":
+				depth -= 1
+	return depth <= 0 and not in_string
 
 static func _parse_value(value_str: String, ext_resources: Dictionary, sub_resources: Dictionary) -> Variant:
 	var placeholders: Dictionary = {}

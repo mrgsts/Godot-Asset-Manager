@@ -611,6 +611,9 @@ static func _node_aabb(node: Node, with_fallback: bool = true) -> AABB:
 	if node is Decal:
 		return AABB()
 
+	if node is MeshInstance3D:
+		return GltfSceneLoader.drawn_aabb(node as MeshInstance3D)
+
 	if node is VisualInstance3D:
 		return (node as VisualInstance3D).get_aabb()
 

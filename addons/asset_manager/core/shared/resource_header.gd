@@ -13,7 +13,9 @@ static func type_of(file_path: String) -> String:
 	var first_line := file.get_line()
 	file.close()
 
+	# Spaces around "=" are legal and some exporters write them
+	# ([gd_resource type = "ShaderMaterial" ...]).
 	var regex := RegEx.new()
-	regex.compile('^\\[gd_resource .*type="([^"]+)"')
+	regex.compile('^\\[gd_resource [^\\]]*?\\btype\\s*=\\s*"([^"]+)"')
 	var found := regex.search(first_line)
 	return found.get_string(1) if found else ""

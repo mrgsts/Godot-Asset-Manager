@@ -176,6 +176,11 @@ func _update_empty_state(matched_count: int) -> void:
 
 	_empty_state.visible = true
 
+## Every asset the current filters match, across all pages, in {path, type,
+## tags} form. With no filter active that is the whole index.
+func matching_assets() -> Array[Dictionary]:
+	return _matching_assets()
+
 func _matching_assets() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 

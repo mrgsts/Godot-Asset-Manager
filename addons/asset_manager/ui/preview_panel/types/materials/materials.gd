@@ -62,12 +62,19 @@ func setup(p_settings: SettingsManager) -> void:
 	_settings = p_settings
 	set_shape_idx(_settings.get_material_shape_idx())
 
-func show_asset(path: String, _type_entry: Dictionary = {}) -> void:
+func show_asset(path: String, type_entry: Dictionary = {}) -> void:
 	visible = true
 	_orbit.snap_to_look_at()
 
 	_load_token += 1
 	var my_token := _load_token
+
+	# A ShaderMaterial's look lives in its shader, not in texture slots a
+	# StandardMaterial3D could be rebuilt from, so it is loaded whole.
+	if ResourceHeader.type_of(path) == "ShaderMaterial":
+		var bucket: String = type_entry.get("id", "materials")
+		_mesh_instance.material_override = TscnSceneLoader.load_resource_external(path, bucket) as Material
+		return
 
 	var material := StandardMaterial3D.new()
 	var properties := TresMaterialLoader.parse_properties(path)
