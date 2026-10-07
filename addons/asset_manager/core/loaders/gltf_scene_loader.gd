@@ -69,3 +69,39 @@ static func _convert_importer_meshes(node: Node) -> Node:
 		_convert_importer_meshes(child)
 
 	return result
+
+## The mesh's bounds as it is drawn, in its own local space. A skinned mesh is
+## drawn where its skeleton puts it, not where its node sits: an Unreal-rigged
+## export carries the mesh in centimetres under a 0.01-scaled armature, so
+## get_aabb() through the node's transform comes out a hundred times too small
+## and framing on it blows the model up past the camera. In the rest pose every
+## bind maps the mesh the same way, so the first one is enough.
+## Works on a tree that isn't in the scene, as previews and thumbnails are
+## measured before they are added.
+static func drawn_aabb(mesh_instance: MeshInstance3D) -> AABB:
+	var aabb := mesh_instance.get_aabb()
+	var skin := mesh_instance.skin
+	if skin == null or skin.get_bind_count() == 0 or mesh_instance.skeleton.is_empty():
+		return aabb
+
+	var skeleton := mesh_instance.get_node_or_null(mesh_instance.skeleton) as Skeleton3D
+	if skeleton == null:
+		return aabb
+
+	var bind_name := skin.get_bind_name(0)
+	var bone := skeleton.find_bone(bind_name) if not bind_name.is_empty() else skin.get_bind_bone(0)
+	if bone < 0 or bone >= skeleton.get_bone_count():
+		return aabb
+
+	var skinned := _to_top(skeleton) * skeleton.get_bone_global_rest(bone) * skin.get_bind_pose(0)
+	return (_to_top(mesh_instance).affine_inverse() * skinned) * aabb
+
+## Transform from the node up to the top of its tree, without needing the tree
+## to be in a scene the way global_transform does.
+static func _to_top(node: Node) -> Transform3D:
+	var xform := Transform3D()
+	while node != null:
+		if node is Node3D:
+			xform = (node as Node3D).transform * xform
+		node = node.get_parent()
+	return xform
