@@ -21,6 +21,7 @@ func _init() -> void:
 	_runner_registry = {
 		"default": DefaultImportRunner,
 		"materials": MaterialsImportRunner,
+		"models": ModelsImportRunner,
 		"unreal": UnrealImportRunner,
 	}
 

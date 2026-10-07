@@ -11,7 +11,8 @@ const ALL: Array[Dictionary] = [
 		"label": "3D Models",
 		"extensions": ["glb", "gltf", "fbx"],
 		"default_icon": "MeshInstance3D",
-		"default_export_path": "res://assets/models"
+		"default_export_path": "res://assets/models",
+		"runners": ["models"]
 	},
 	{
 		"id": "images",
